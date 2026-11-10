@@ -6,6 +6,9 @@
   <title>Sehat Diary</title>
   <meta name="theme-color" content="#0f9d74">
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
   <header class="topbar">
@@ -25,6 +28,7 @@
         <div>
           <h2 id="greet">Namaste!</h2>
           <p class="muted" id="scoreMsg">Aaj ka record bharo.</p>
+          <div class="chips" id="streakChips"></div>
         </div>
       </div>
 
@@ -67,6 +71,11 @@
         </div>
       </div>
 
+      <div class="card" id="medsCard">
+        <h3>💊 Dawai / Supplements</h3>
+        <div id="medsToday"></div>
+      </div>
+
       <div class="card">
         <h3>🍽️ Aaj kya khaya</h3>
         <div class="add-food">
@@ -81,7 +90,30 @@
           <input type="number" id="foodQty" value="1" min="0.5" step="0.5" title="Kitni serving">
           <button class="btn" id="addFood">Jodo</button>
         </div>
+        <div class="quick" id="quickAdd"></div>
         <div id="mealList"></div>
+        <details class="custom-food">
+          <summary>➕ List mein nahi hai? Apna khana jodo</summary>
+          <form id="customFoodForm">
+            <label class="field wide">Naam (serving ke saath, jaise "Bajra roti (1)")<input name="name" required maxlength="60"></label>
+            <div class="grid4">
+              <label class="field">Calories<input name="kcal" type="number" min="0" step="any" required></label>
+              <label class="field">Protein g<input name="p" type="number" min="0" step="any"></label>
+              <label class="field">Carbs g<input name="c" type="number" min="0" step="any"></label>
+              <label class="field">Fat g<input name="f" type="number" min="0" step="any"></label>
+              <label class="field">Fiber g<input name="fib" type="number" min="0" step="any"></label>
+              <label class="field">Vit A mcg<input name="va" type="number" min="0" step="any"></label>
+              <label class="field">Vit C mg<input name="vc" type="number" min="0" step="any"></label>
+              <label class="field">Vit D mcg<input name="vd" type="number" min="0" step="any"></label>
+              <label class="field">B12 mcg<input name="b12" type="number" min="0" step="any"></label>
+              <label class="field">Iron mg<input name="fe" type="number" min="0" step="any"></label>
+              <label class="field">Calcium mg<input name="ca" type="number" min="0" step="any"></label>
+              <label class="field check"><span><input name="junk" type="checkbox"> Junk food hai</span></label>
+            </div>
+            <button class="btn small" type="submit">Save khana</button>
+          </form>
+          <div id="customList"></div>
+        </details>
       </div>
 
       <div class="card">
@@ -112,6 +144,15 @@
         <div class="stats" id="stats"></div>
       </div>
       <div class="card">
+        <h3>💡 Report aur salah</h3>
+        <div id="insights"></div>
+      </div>
+      <div class="card" id="calCard">
+        <h3>📅 Mahine ka calendar</h3>
+        <div class="cal" id="calendar"></div>
+        <div class="legend"><span><i style="background:var(--bad)"></i>&lt;40</span><span><i style="background:var(--warn)"></i>40-69</span><span><i style="background:var(--pri)"></i>70+</span><span><i style="background:var(--line)"></i>entry nahi</span></div>
+      </div>
+      <div class="card">
         <h3>📊 Roz ka score</h3>
         <div class="chart" id="scoreChart"></div>
       </div>
@@ -120,9 +161,34 @@
         <div class="chart" id="waterChart"></div>
       </div>
       <div class="card">
+        <h3>🔥 Streaks aur Badges</h3>
+        <div class="stats" id="streakStats"></div>
+        <div class="badges" id="badges"></div>
+      </div>
+      <div class="card">
         <h3>📅 Din-ba-din</h3>
         <div class="table-wrap"><table id="histTable"></table></div>
       </div>
+    </section>
+
+    <!-- JAANCH / VITALS -->
+    <section id="tab-vitals" class="tab">
+      <div class="card">
+        <h3>🩺 Jaanch – BP, Sugar, Wazan</h3>
+        <p class="muted small">Machine se naapo aur upar wali tareekh ke liye yahan likho. Khali chhod sakte ho.</p>
+        <div class="grid3">
+          <label class="field">BP upar (Systolic)<input type="number" id="vSys" min="50" max="260" placeholder="120"></label>
+          <label class="field">BP neeche (Diastolic)<input type="number" id="vDia" min="30" max="160" placeholder="80"></label>
+          <label class="field">Pulse (dhadkan/min)<input type="number" id="vPulse" min="30" max="220" placeholder="72"></label>
+          <label class="field">Sugar khali pet (mg/dL)<input type="number" id="vSugarF" min="20" max="600" placeholder="90"></label>
+          <label class="field">Sugar khane ke 2 ghante baad<input type="number" id="vSugarPP" min="20" max="600" placeholder="130"></label>
+          <label class="field">Wazan (kg)<input type="number" id="vWeight" step="0.1" min="0"></label>
+        </div>
+        <div id="vitalStatus"></div>
+      </div>
+      <div class="card"><h3>⚖️ Wazan (30 din)</h3><div id="weightChart"></div></div>
+      <div class="card"><h3>❤️ BP (30 din)</h3><div id="bpChart"></div></div>
+      <div class="card"><h3>🩸 Sugar (30 din)</h3><div id="sugarChart"></div></div>
     </section>
 
     <!-- DIET PLAN -->
@@ -185,6 +251,17 @@
       </form>
 
       <div class="card">
+        <h3>💊 Meri Dawai / Supplements list</h3>
+        <p class="muted small">Jo dawai ya vitamin tablet roz leni hai, yahan jodo – "Aaj" page par roz tick kar paoge.</p>
+        <form class="add-med" id="medForm">
+          <input name="name" placeholder="Jaise: Vitamin D tablet, BP ki goli" required maxlength="50">
+          <select name="time"><option>Subah</option><option>Dopahar</option><option>Shaam</option><option>Raat</option></select>
+          <button class="btn" type="submit">Jodo</button>
+        </form>
+        <div id="medList"></div>
+      </div>
+
+      <div class="card">
         <h3>💾 Backup</h3>
         <p class="muted small">Saara data sirf aapke phone/browser mein save hota hai. Backup file download karke rakh lo.</p>
         <div class="row">
@@ -200,8 +277,9 @@
   <nav class="tabs">
     <button data-tab="today" class="on"><span>🏠</span>Aaj</button>
     <button data-tab="history"><span>📊</span>Record</button>
-    <button data-tab="plan"><span>🥗</span>Diet Plan</button>
-    <button data-tab="addict"><span>🚭</span>Nasha Mukti</button>
+    <button data-tab="vitals"><span>🩺</span>Jaanch</button>
+    <button data-tab="plan"><span>🥗</span>Diet</button>
+    <button data-tab="addict"><span>🚭</span>Nasha</button>
     <button data-tab="profile"><span>👤</span>Profile</button>
   </nav>
 

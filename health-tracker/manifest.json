@@ -1,0 +1,10 @@
+{
+  "name": "Sehat Diary – Daily Health Tracker",
+  "short_name": "Sehat Diary",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f4",
+  "theme_color": "#0f9d74",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
