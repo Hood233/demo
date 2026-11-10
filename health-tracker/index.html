@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sehat Diary</title>
+  <meta name="theme-color" content="#0f9d74">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🌿 Sehat Diary</div>
+    <div class="date-nav" id="dateNav">
+      <button class="icon-btn" id="prevDay" aria-label="Pichhla din">‹</button>
+      <input type="date" id="datePick">
+      <button class="icon-btn" id="nextDay" aria-label="Agla din">›</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- AAJ -->
+    <section id="tab-today" class="tab active">
+      <div class="card score-card">
+        <div class="ring" id="scoreRing"><span id="scoreVal">0</span><small>/100</small></div>
+        <div>
+          <h2 id="greet">Namaste!</h2>
+          <p class="muted" id="scoreMsg">Aaj ka record bharo.</p>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>💧 Paani</h3>
+          <div class="water-row">
+            <button class="round" id="waterMinus">−</button>
+            <div class="water-val"><b id="waterGlasses">0</b> glass<br><small class="muted" id="waterMl">0 / 0 ml</small></div>
+            <button class="round" id="waterPlus">+</button>
+          </div>
+          <div class="bar"><i id="waterBar"></i></div>
+          <p class="muted small" id="waterHint"></p>
+        </div>
+
+        <div class="card">
+          <h3>🚶 Morning Walk</h3>
+          <label class="switch-row"><input type="checkbox" id="walkDone"> Aaj walk ki</label>
+          <label class="field">Kitne minute
+            <input type="number" id="walkMin" min="0" max="300" placeholder="30">
+          </label>
+          <p class="muted small" id="walkHint"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>✅ Aaj ki aadatein</h3>
+        <div class="habits">
+          <label><input type="checkbox" id="hExercise"> Yoga / Exercise</label>
+          <label><input type="checkbox" id="hSun"> Dhoop li (15-20 min)</label>
+          <label><input type="checkbox" id="hNoJunk"> Junk food nahi khaya</label>
+          <label><input type="checkbox" id="hEarlyDinner"> Raat ka khana sone se 2 ghante pehle</label>
+        </div>
+        <div class="grid3">
+          <label class="field">Neend (ghante)<input type="number" id="sleep" step="0.5" min="0" max="24"></label>
+          <label class="field">Wazan (kg)<input type="number" id="weightToday" step="0.1" min="0"></label>
+          <label class="field">Mood
+            <select id="mood"><option value="">–</option><option>😄 Badhiya</option><option>🙂 Theek</option><option>😐 Normal</option><option>😔 Udaas</option><option>😫 Thaka hua</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🍽️ Aaj kya khaya</h3>
+        <div class="add-food">
+          <select id="mealSel">
+            <option value="morning">Subah / Nashta</option>
+            <option value="lunch">Dopahar</option>
+            <option value="snack">Shaam / Snacks</option>
+            <option value="dinner">Raat</option>
+          </select>
+          <input list="foodList" id="foodInput" placeholder="Khana dhundo… (jaise roti, dal)">
+          <datalist id="foodList"></datalist>
+          <input type="number" id="foodQty" value="1" min="0.5" step="0.5" title="Kitni serving">
+          <button class="btn" id="addFood">Jodo</button>
+        </div>
+        <div id="mealList"></div>
+      </div>
+
+      <div class="card">
+        <h3>🧪 Vitamin aur Poshan – kitna mila, kya reh gaya</h3>
+        <div id="nutriList"></div>
+        <div id="missingBox"></div>
+      </div>
+
+      <div class="card" id="addictTodayCard">
+        <h3>🚭 Nasha – aaj liya?</h3>
+        <p class="muted small">Agar tracking chalu hai aur aaj liya to tick karo – counter reset hoga.</p>
+        <div id="addictToday"></div>
+      </div>
+
+      <div class="card">
+        <h3>📝 Notes</h3>
+        <textarea id="notes" rows="3" placeholder="Aaj kaisa feel hua, koi dawai li, etc."></textarea>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="tab-history" class="tab">
+      <div class="card">
+        <div class="seg" id="rangeSeg">
+          <button data-r="7" class="on">Hafta (7 din)</button>
+          <button data-r="30">Mahina (30 din)</button>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="card">
+        <h3>📊 Roz ka score</h3>
+        <div class="chart" id="scoreChart"></div>
+      </div>
+      <div class="card">
+        <h3>💧 Paani (glass)</h3>
+        <div class="chart" id="waterChart"></div>
+      </div>
+      <div class="card">
+        <h3>📅 Din-ba-din</h3>
+        <div class="table-wrap"><table id="histTable"></table></div>
+      </div>
+    </section>
+
+    <!-- DIET PLAN -->
+    <section id="tab-plan" class="tab">
+      <div class="card" id="lifestyleCard"></div>
+      <div class="card">
+        <h3>🥗 Hafte ka Diet Plan</h3>
+        <div class="seg" id="dietSeg">
+          <button data-d="veg">Veg</button>
+          <button data-d="egg">Veg + Anda</button>
+          <button data-d="nonveg">Non-Veg</button>
+        </div>
+        <p class="muted small" id="planNote"></p>
+        <div id="weekPlan"></div>
+      </div>
+    </section>
+
+    <!-- NASHA MUKTI -->
+    <section id="tab-addict" class="tab">
+      <div class="card">
+        <h3>🏆 Nasha Mukti Tracker</h3>
+        <p class="muted small">Jo chhod rahe ho uski tracking chalu karo. Kitne din ho gaye, kitne paise bache, body mein kya sudhaar hua – sab dikhega.</p>
+      </div>
+      <div id="addictCards"></div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="tab-profile" class="tab">
+      <form class="card" id="profileForm">
+        <h3>👤 Meri Profile</h3>
+        <div class="grid2">
+          <label class="field">Naam<input name="name" required></label>
+          <label class="field">Umar (saal)<input name="age" type="number" min="5" max="110" required></label>
+          <label class="field">Ling
+            <select name="gender"><option value="male">Purush (Male)</option><option value="female">Mahila (Female)</option></select>
+          </label>
+          <label class="field">Lambai (cm)<input name="height" type="number" min="80" max="250" required></label>
+          <label class="field">Wazan (kg)<input name="weight" type="number" step="0.1" min="20" max="300" required></label>
+          <label class="field">Kaam / Activity
+            <select name="activity">
+              <option value="low">Baith ke kaam (office)</option>
+              <option value="light">Halka chalna-phirna</option>
+              <option value="moderate">Mehnat wala / roz exercise</option>
+              <option value="high">Bahut mehnat / heavy workout</option>
+            </select>
+          </label>
+          <label class="field">Lakshya (Goal)
+            <select name="goal">
+              <option value="maintain">Wazan same rakhna</option>
+              <option value="lose">Wazan kam karna</option>
+              <option value="gain">Wazan badhana</option>
+            </select>
+          </label>
+          <label class="field">Khana
+            <select name="diet"><option value="veg">Veg</option><option value="egg">Veg + Anda</option><option value="nonveg">Non-Veg</option></select>
+          </label>
+        </div>
+        <button class="btn" type="submit">Save karo</button>
+        <div id="profileSummary"></div>
+      </form>
+
+      <div class="card">
+        <h3>💾 Backup</h3>
+        <p class="muted small">Saara data sirf aapke phone/browser mein save hota hai. Backup file download karke rakh lo.</p>
+        <div class="row">
+          <button class="btn ghost" id="exportBtn">Backup download</button>
+          <label class="btn ghost">Backup restore<input type="file" id="importFile" accept="application/json" hidden></label>
+          <button class="btn danger" id="resetBtn">Sab data delete</button>
+        </div>
+      </div>
+      <p class="muted small center">⚠️ Ye app sirf jaankari ke liye hai, doctor ki salah ka vikalp nahi. Poshan ke aankde andaze hain.</p>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-tab="today" class="on"><span>🏠</span>Aaj</button>
+    <button data-tab="history"><span>📊</span>Record</button>
+    <button data-tab="plan"><span>🥗</span>Diet Plan</button>
+    <button data-tab="addict"><span>🚭</span>Nasha Mukti</button>
+    <button data-tab="profile"><span>👤</span>Profile</button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
