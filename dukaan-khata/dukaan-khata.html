@@ -1,0 +1,974 @@
+<title>Dukaan Khata</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a shop counter app – a sticky top bar, one column of ledger cards, bottom tab bar.
+   Money columns are always in tabular figures; green = paisa aana hai, red = dena hai. */
+:root {
+  --bg: #f3f5f4; --card: #ffffff; --ink: #16211c; --soft: #5f6d66; --line: #e0e6e3; --line2: #c9d2ce;
+  --brand: #0d6b57; --brand-ink: #ffffff; --brand-soft: #dcefe9;
+  --get: #12805a; --get-soft: #def3e9;      /* lena hai / aaya */
+  --give: #c0392b; --give-soft: #fbe5e2;    /* dena hai / gaya */
+  --warn: #9a6400; --warn-soft: #fcefd0;
+  --f: "Segoe UI", system-ui, -apple-system, Roboto, "Noto Sans", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", "Roboto Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1513; --card: #18201d; --ink: #e5ece9; --soft: #9aaba3; --line: #26322d; --line2: #36443e;
+    --brand: #3fb895; --brand-ink: #06231b; --brand-soft: #173a30; --get: #5fd3a2; --get-soft: #143629;
+    --give: #ff8a7a; --give-soft: #3c1c18; --warn: #f0c25a; --warn-soft: #352a0f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1513; --card: #18201d; --ink: #e5ece9; --soft: #9aaba3; --line: #26322d; --line2: #36443e;
+  --brand: #3fb895; --brand-ink: #06231b; --brand-soft: #173a30; --get: #5fd3a2; --get-soft: #143629;
+  --give: #ff8a7a; --give-soft: #3c1c18; --warn: #f0c25a; --warn-soft: #352a0f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f); font-size: 15px; line-height: 1.45; padding-block: 0 calc(74px + env(safe-area-inset-bottom, 0px)); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--brand); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--brand); color: var(--brand-ink);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 10px; }
+.bar-in { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.bar h1 { margin: 0; font-size: 1.1rem; font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .back { background: none; border: 0; color: inherit; font-size: 1.5rem; line-height: 1; padding: 0 6px 0 0; cursor: pointer; }
+.bar .tag { font-size: .72rem; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.18); white-space: nowrap; }
+main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px; }
+.page { max-width: 860px; margin: 0 auto; display: grid; gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.card h2 { margin: 0; font-size: 1rem; font-weight: 650; }
+.card > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.muted { color: var(--soft); } .small { font-size: .84rem; } .tiny { font-size: .76rem; }
+.num, .amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.get { color: var(--get); } .give { color: var(--give); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 560px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+.stat { border-radius: 10px; padding: 10px 12px; background: var(--bg); display: grid; gap: 2px; min-width: 0; }
+.stat b { font-family: var(--mono); font-size: 1.15rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat span { font-size: .78rem; color: var(--soft); }
+.stat.get { background: var(--get-soft); } .stat.give { background: var(--give-soft); }
+.stat.get b { color: var(--get); } .stat.give b { color: var(--give); }
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 480px) { .quick { grid-template-columns: 1fr 1fr; } }
+.quick button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 12px 6px; font: inherit; font-weight: 600; font-size: .86rem; cursor: pointer; display: grid; gap: 4px; justify-items: center; }
+.quick button i { font-style: normal; font-size: 1.3rem; }
+label.f { display: grid; gap: 3px; font-size: .78rem; color: var(--soft); font-weight: 500; min-width: 0; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line2); border-radius: 8px; padding: 9px 10px; width: 100%; min-width: 0; }
+textarea { resize: vertical; min-height: 70px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.btn { font: inherit; border: 0; border-radius: 9px; padding: 10px 16px; font-weight: 650; cursor: pointer; background: var(--brand); color: var(--brand-ink); text-align: center; text-decoration: none; display: inline-block; white-space: nowrap; }
+.btn.ghost { background: var(--brand-soft); color: var(--brand); }
+.btn.line { background: none; border: 1px solid var(--line2); color: var(--ink); }
+.btn.red { background: var(--give); color: #fff; } .btn.green { background: var(--get); color: #fff; }
+.btn.sm { padding: 6px 11px; font-size: .84rem; }
+.btn.block { width: 100%; }
+.grid2 > .btn { white-space: normal; line-height: 1.3; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: flex-end; }
+.seg { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { flex: 1; border: 0; background: none; color: var(--soft); padding: 8px; border-radius: 8px; font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.list { display: grid; }
+.li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); cursor: pointer; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; text-align: left; width: 100%; }
+.li:last-child { border-bottom: 0; }
+.li .av { width: 38px; height: 38px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); display: grid; place-content: center; font-weight: 700; }
+.li .t { min-width: 0; } .li .t b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.li .r { text-align: right; }
+.li .r b { font-family: var(--mono); font-variant-numeric: tabular-nums; display: block; }
+.pill { display: inline-block; font-size: .72rem; font-weight: 650; padding: 1px 8px; border-radius: 99px; background: var(--bg); color: var(--soft); white-space: nowrap; }
+.pill.get { background: var(--get-soft); color: var(--get); } .pill.give { background: var(--give-soft); color: var(--give); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
+.empty { padding: 18px 4px; color: var(--soft); display: grid; gap: 10px; justify-items: start; }
+.tbl-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--soft); font-weight: 650; padding: 6px; border-bottom: 2px solid var(--line2); white-space: nowrap; }
+td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.r, th.r { text-align: right; } td.nw { white-space: nowrap; }
+.lines { display: grid; gap: 8px; }
+.bline { display: grid; grid-template-columns: 1fr 70px 90px 64px auto; gap: 6px; align-items: start; padding-bottom: 8px; border-bottom: 1px dashed var(--line2); }
+@media (max-width: 560px) { .bline { grid-template-columns: 1fr 1fr 1fr auto; } .bline .ln-item { grid-column: 1 / -1; } }
+.bline .hint { grid-column: 1 / -1; font-size: .78rem; color: var(--soft); margin-top: -2px; }
+.x { background: none; border: 0; color: var(--soft); font-size: 1.05rem; cursor: pointer; padding: 8px 6px; }
+.x:hover { color: var(--give); }
+.totals { display: grid; gap: 4px; font-size: .92rem; }
+.totals div { display: flex; justify-content: space-between; gap: 10px; }
+.totals .big { font-size: 1.15rem; font-weight: 700; border-top: 1px solid var(--line2); padding-top: 6px; }
+.hero { text-align: center; padding: 18px 10px; border-radius: 12px; }
+.hero b { display: block; font-family: var(--mono); font-size: 1.9rem; font-variant-numeric: tabular-nums; }
+.hero.get { background: var(--get-soft); color: var(--get); } .hero.give { background: var(--give-soft); color: var(--give); } .hero.zero { background: var(--bg); color: var(--soft); }
+.chg { font-size: .76rem; font-weight: 650; padding: 1px 6px; border-radius: 5px; }
+.chg.up { background: var(--give-soft); color: var(--give); } .chg.down { background: var(--get-soft); color: var(--get); } .chg.same { background: var(--bg); color: var(--soft); }
+.confirm { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .88rem; padding: 8px 10px; border-radius: 8px; background: var(--give-soft); color: var(--give); }
+.banner { padding: 9px 12px; border-radius: 8px; font-size: .86rem; background: var(--warn-soft); color: var(--warn); }
+.banner.err { background: var(--give-soft); color: var(--give); }
+.bill-paper { border: 1px solid var(--line2); border-radius: 10px; padding: 14px; display: grid; gap: 8px; background: var(--card); }
+.bill-paper .bh { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bill-paper h3 { margin: 0; font-size: 1.05rem; }
+pre.share { white-space: pre-wrap; font-family: var(--mono); font-size: .8rem; background: var(--bg); padding: 10px; border-radius: 8px; margin: 0; max-height: 260px; overflow: auto; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--card); border-top: 1px solid var(--line);
+  display: flex; padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+nav.tabs a { flex: 1; text-align: center; text-decoration: none; color: var(--soft); font-size: .7rem; font-weight: 600; padding: 7px 2px 9px; display: grid; gap: 1px; }
+nav.tabs a i { font-style: normal; font-size: 1.25rem; }
+nav.tabs a.on { color: var(--brand); }
+.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 9px 16px; border-radius: 99px; font-size: .88rem; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { opacity: 1; }
+.bars { display: grid; gap: 6px; }
+.bars .b { display: grid; grid-template-columns: 110px 1fr 90px; gap: 8px; align-items: center; font-size: .84rem; }
+.bars .b > div { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.bars .b i { display: block; height: 100%; background: var(--brand); border-radius: 5px; }
+.bars .b span:last-child { text-align: right; font-family: var(--mono); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<header class="bar"><div class="bar-in">
+  <button class="back" id="backBtn" hidden aria-label="Wapas">‹</button>
+  <h1 id="barTitle">Dukaan Khata</h1>
+  <span class="tag" id="modeTag">…</span>
+</div></header>
+<main><div class="page" id="app"></div></main>
+<nav class="tabs" aria-label="Main">
+  <a href="#home" data-t="home"><i>🏠</i>Home</a>
+  <a href="#parties" data-t="parties"><i>👥</i>Khata</a>
+  <a href="#bills" data-t="bills"><i>🧾</i>Bill</a>
+  <a href="#items" data-t="items"><i>📦</i>Saamaan</a>
+  <a href="#more" data-t="more"><i>☰</i>Aur</a>
+</nav>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+// ================= helpers =================
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const money = (n) => "₹" + r2(n).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const dmy = (s) => (s ? s.split("-").reverse().join("-") : "");
+const monthStart = (s = today()) => s.slice(0, 8) + "01";
+const keyOf = (n) => String(n).toLowerCase().replace(/[^a-z0-9ऀ-ॿ]+/g, " ").trim();
+const initials = (n) => String(n).trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase() || "?";
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2400); }
+const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+const numv = (id) => { const v = val(id); return v === "" ? 0 : Number(v); };
+
+// ================= data =================
+const COLS = ["parties", "entries", "items", "bills", "expenses"];
+const D = { parties: [], entries: [], items: [], bills: [], expenses: [], settings: { bizName: "", phone: "", address: "", gstin: "", upi: "" } };
+let db = null, downloads = null, ready = false, mode = "local";
+const LKEY = "dukaanKhata.v1";
+
+function localLoad() { try { const s = JSON.parse(localStorage.getItem(LKEY)); if (s) { COLS.forEach((c) => (D[c] = s[c] || [])); D.settings = { ...D.settings, ...(s.settings || {}) }; } } catch (e) { /* storage blocked */ } }
+function localSave() { try { const o = { settings: D.settings }; COLS.forEach((c) => (o[c] = D[c])); localStorage.setItem(LKEY, JSON.stringify(o)); } catch (e) { toast("Phone mein save nahi ho paya"); } }
+
+const store = {
+  async put(col, doc) {
+    if (db) return db.collection(col).doc(doc.id).set(doc);
+    const a = D[col], i = a.findIndex((x) => x.id === doc.id);
+    if (i >= 0) a[i] = doc; else a.push(doc);
+    localSave();
+  },
+  async del(col, id) {
+    if (db) return db.collection(col).doc(id).delete();
+    D[col] = D[col].filter((x) => x.id !== id); localSave();
+  },
+  async settings(s) {
+    D.settings = s;
+    if (db) return db.collection("settings").doc("main").set(s);
+    localSave();
+  },
+};
+
+function useLocal(msg) {
+  if (ready) return;
+  ready = true; mode = "local"; localLoad();
+  $("#modeTag").textContent = "Phone mein save";
+  if (msg) bannerMsg = msg;
+  render();
+}
+let bannerMsg = "";
+async function init() {
+  render();
+  if (!window.claude || typeof window.claude.use !== "function") return useLocal();
+  const guard = setTimeout(() => useLocal("Online storage se jawab nahi aaya – abhi data sirf is browser mein save hoga."), 10000);
+  const [d, dl] = await Promise.all([claude.use("db"), claude.use("downloads")]);
+  downloads = dl;
+  if (!d) { clearTimeout(guard); return useLocal("Login nahi hai – data sirf is browser mein save hoga."); }
+  if (ready) return;
+  db = d;
+  let pending = COLS.length + 1;
+  const first = () => { if (--pending === 0) { clearTimeout(guard); ready = true; mode = "db"; $("#modeTag").textContent = "Online save"; render(); } };
+  const fail = (e) => { clearTimeout(guard); bannerMsg = "Data load nahi hua (" + e.code + "). Page dobara kholo."; render(); };
+  COLS.forEach((c) => { let f = true; db.collection(c).onSnapshot((s) => { D[c] = s.docs.map((x) => x.data()); if (f) { f = false; first(); } else render(); }, fail); });
+  let fs = true;
+  db.collection("settings").doc("main").onSnapshot((s) => { if (s.exists) D.settings = { ...D.settings, ...s.data() }; if (fs) { fs = false; first(); } else render(); }, fail);
+}
+
+// ================= derived =================
+const party = (id) => D.parties.find((p) => p.id === id);
+const item = (id) => D.items.find((i) => i.id === id);
+const byDate = (a, b) => (a.date === b.date ? (a.created || 0) - (b.created || 0) : a.date < b.date ? -1 : 1);
+function balance(pid) { return r2(D.entries.filter((e) => e.partyId === pid).reduce((s, e) => s + (e.kind === "gave" ? e.amount : -e.amount), 0)); }
+function totalsAll() {
+  let lena = 0, dena = 0;
+  D.parties.forEach((p) => { const b = balance(p.id); if (b > 0) lena += b; else dena -= b; });
+  return { lena: r2(lena), dena: r2(dena) };
+}
+function billCalc(b) {
+  let sub = 0, gst = 0;
+  (b.lines || []).forEach((l) => { const amt = r2(l.qty * l.rate); sub += amt; gst += r2(amt * (l.gst || 0) / 100); });
+  const total = r2(sub + gst - (b.discount || 0));
+  return { sub: r2(sub), gst: r2(gst), total };
+}
+function nextBillNo(type) {
+  const pre = type === "sale" ? "INV-" : "PUR-";
+  const nums = D.bills.filter((b) => b.type === type).map((b) => parseInt(String(b.no).replace(/\D/g, ""), 10) || 0);
+  return pre + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(3, "0");
+}
+// last purchase rate of an item (for "rate badha/ghata" remark)
+function lastBuy(itemId, beforeDate, exceptBill) {
+  const rows = [];
+  D.bills.filter((b) => b.type === "purchase" && b.id !== exceptBill && (!beforeDate || b.date <= beforeDate)).forEach((b) => b.lines.forEach((l) => { if (l.itemId === itemId) rows.push({ rate: l.rate, date: b.date, created: b.created, party: party(b.partyId)?.name || "Cash" }); }));
+  rows.sort(byDate);
+  return rows.at(-1) || null;
+}
+function chg(now, before) {
+  if (before == null) return "";
+  const d = r2(now - before);
+  if (!d) return '<span class="chg same">rate same</span>';
+  return d > 0 ? `<span class="chg up">${money(d)} badh gaye</span>` : `<span class="chg down">${money(-d)} kam hue</span>`;
+}
+function inRange(d, from, to) { return (!from || d >= from) && (!to || d <= to); }
+
+// ================= navigation =================
+// main tabs use the hash; sub-pages live in an in-memory stack
+let stack = [];
+const TABS = ["home", "parties", "bills", "items", "more"];
+function tab() { const h = location.hash.slice(1); return TABS.includes(h) ? h : "home"; }
+function go(view, params = {}) { stack.push({ view, params }); render(); window.scrollTo(0, 0); }
+function back() { stack.pop(); render(); window.scrollTo(0, 0); }
+window.addEventListener("hashchange", () => { stack = []; render(); window.scrollTo(0, 0); });
+$("#backBtn").onclick = back;
+// tapping the current tab again returns to its list
+document.querySelectorAll("nav.tabs a").forEach((a) => a.addEventListener("click", () => { if (a.dataset.t === tab()) { stack = []; draft = null; render(); window.scrollTo(0, 0); } }));
+
+// share / export helpers
+async function copyOrShare(title, text) {
+  if (window.AndroidBridge) { window.AndroidBridge.shareText(title, text); return; }
+  try { await navigator.clipboard.writeText(text); toast("Copy ho gaya – WhatsApp mein paste karo"); }
+  catch (e) { toast("Neeche ka text select karke copy karo"); const pre = document.getElementById("sharePre"); if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } }
+}
+function waLink(phone, text) {
+  const p = String(phone || "").replace(/\D/g, "");
+  const num = p.length === 10 ? "91" + p : p;
+  return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
+}
+async function saveFile(filename, text) {
+  if (window.AndroidBridge) { window.AndroidBridge.shareText(filename, text); return; }
+  if (downloads) { try { await downloads.save({ filename, data: text }); } catch (e) { if (e?.code !== "declined") toast("Download nahi hua"); } return; }
+  try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = filename; a.click(); } catch (e) { toast("Download nahi hua"); }
+}
+const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+const toCsv = (head, rows) => "﻿" + [head, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
+
+// ================= render =================
+const V = {};
+let confirmKey = null;
+function render() {
+  const t = tab();
+  document.querySelectorAll("nav.tabs a").forEach((a) => a.classList.toggle("on", a.dataset.t === t));
+  const top = stack.at(-1);
+  $("#backBtn").hidden = !top;
+  const app = $("#app");
+  if (!ready) { $("#barTitle").textContent = "Dukaan Khata"; app.innerHTML = `<div class="card"><p class="muted">Hisaab load ho raha hai…</p></div>`; return; }
+  const out = top ? V[top.view](top.params) : V[t]();
+  $("#barTitle").textContent = out.title;
+  app.innerHTML = (bannerMsg ? `<div class="banner">${esc(bannerMsg)}</div>` : "") + out.html;
+  out.bind && out.bind();
+}
+
+// ---------- HOME ----------
+V.home = () => {
+  const { lena, dena } = totalsAll();
+  const td = today(), ms = monthStart();
+  const sales = D.bills.filter((b) => b.type === "sale");
+  const sum = (arr) => r2(arr.reduce((s, b) => s + billCalc(b).total, 0));
+  const todaySale = sum(sales.filter((b) => b.date === td)), monthSale = sum(sales.filter((b) => b.date >= ms));
+  const todayExp = r2(D.expenses.filter((e) => e.date === td).reduce((s, e) => s + e.amount, 0));
+  const todayIn = r2(D.entries.filter((e) => e.date === td && e.kind === "got" && party(e.partyId)?.type === "customer").reduce((s, e) => s + e.amount, 0)) + r2(sales.filter((b) => b.date === td && !b.partyId).reduce((s, b) => s + (b.paid || 0), 0));
+  const low = D.items.filter((i) => i.lowAt != null && i.lowAt !== "" && i.stock <= i.lowAt);
+  const recent = [
+    ...D.bills.map((b) => ({ date: b.date, created: b.created, html: `<button class="li" data-open-bill="${b.id}"><span class="av">${b.type === "sale" ? "🧾" : "📥"}</span><span class="t"><b>${esc(party(b.partyId)?.name || "Cash")}</b><span class="tiny muted">${b.type === "sale" ? "Sale" : "Purchase"} ${esc(b.no)} · ${dmy(b.date)}</span></span><span class="r"><b>${money(billCalc(b).total)}</b></span></button>` })),
+    ...D.entries.filter((e) => !e.billId).map((e) => ({ date: e.date, created: e.created, html: `<button class="li" data-open-party="${e.partyId}"><span class="av">${e.kind === "gave" ? "↑" : "↓"}</span><span class="t"><b>${esc(party(e.partyId)?.name || "?")}</b><span class="tiny muted">${e.kind === "gave" ? "Aapne diye" : "Aapko mile"} · ${dmy(e.date)}${e.note ? " · " + esc(e.note) : ""}</span></span><span class="r"><b class="${e.kind === "gave" ? "give" : "get"}">${money(e.amount)}</b></span></button>` })),
+    ...D.expenses.map((e) => ({ date: e.date, created: e.created, html: `<button class="li" data-go="expenses"><span class="av">💸</span><span class="t"><b>${esc(e.category)}</b><span class="tiny muted">Kharcha · ${dmy(e.date)}</span></span><span class="r"><b class="give">${money(e.amount)}</b></span></button>` })),
+  ].sort(byDate).reverse().slice(0, 8);
+  const biz = D.settings.bizName;
+  return {
+    title: biz || "Dukaan Khata",
+    html: `
+    ${!biz ? `<div class="card"><p class="small">👋 Shuru karne ke liye apni dukaan ka naam aur phone daalo – bill par yahi chhapega.</p><div><button class="btn sm" data-go="settings">Dukaan ki details bharo</button></div></div>` : ""}
+    <div class="grid2">
+      <div class="stat get"><span>Aapko milne hain (lena)</span><b>${money(lena)}</b></div>
+      <div class="stat give"><span>Aapko dene hain (dena)</span><b>${money(dena)}</b></div>
+    </div>
+    <div class="quick">
+      <button data-go="billForm" data-type="sale"><i>🧾</i>Sale bill</button>
+      <button data-go="billForm" data-type="purchase"><i>📥</i>Purchase</button>
+      <button data-go="partyPick"><i>✍️</i>Udhaar / Jama</button>
+      <button data-go="expenseForm"><i>💸</i>Kharcha</button>
+    </div>
+    <div class="card">
+      <header><h2>Aaj ka hisaab · ${dmy(td)}</h2><button class="btn sm ghost" data-go="reports">Report</button></header>
+      <div class="grid3">
+        <div class="stat"><span>Aaj ki bikri</span><b>${money(todaySale)}</b></div>
+        <div class="stat"><span>Aaj paise aaye</span><b>${money(todayIn)}</b></div>
+        <div class="stat"><span>Aaj kharcha</span><b>${money(todayExp)}</b></div>
+        <div class="stat"><span>Is mahine bikri</span><b>${money(monthSale)}</b></div>
+        <div class="stat"><span>Party</span><b>${D.parties.length}</b></div>
+        <div class="stat"><span>Saamaan</span><b>${D.items.length}</b></div>
+      </div>
+    </div>
+    ${low.length ? `<div class="card"><header><h2>⚠️ Stock kam hai</h2></header><div class="list">${low.map((i) => `<button class="li" data-open-item="${i.id}"><span class="av">📦</span><span class="t"><b>${esc(i.name)}</b><span class="tiny muted">alert ${i.lowAt} pe</span></span><span class="r"><span class="pill give">${r2(i.stock)} ${esc(i.unit || "")} bacha</span></span></button>`).join("")}</div></div>` : ""}
+    <div class="card"><header><h2>Haal ki entries</h2></header>
+      ${recent.length ? `<div class="list">${recent.map((r) => r.html).join("")}</div>` : `<div class="empty">Abhi koi entry nahi. Upar se sale bill, udhaar ya kharcha jodo.</div>`}
+    </div>`,
+  };
+};
+
+// ---------- PARTIES ----------
+let partyTab = "customer", partyQ = "";
+V.parties = () => {
+  const q = keyOf(partyQ);
+  const list = D.parties.filter((p) => p.type === partyTab && (!q || keyOf(p.name + " " + (p.phone || "")).includes(q)))
+    .map((p) => ({ p, b: balance(p.id) })).sort((a, b) => Math.abs(b.b) - Math.abs(a.b) || a.p.name.localeCompare(b.p.name));
+  let lena = 0, dena = 0; D.parties.filter((p) => p.type === partyTab).forEach((p) => { const b = balance(p.id); if (b > 0) lena += b; else dena -= b; });
+  return {
+    title: "Khata",
+    html: `
+    <div class="seg"><button data-ptab="customer" class="${partyTab === "customer" ? "on" : ""}">Customer</button><button data-ptab="supplier" class="${partyTab === "supplier" ? "on" : ""}">Supplier</button></div>
+    <div class="grid2"><div class="stat get"><span>Lena hai</span><b>${money(lena)}</b></div><div class="stat give"><span>Dena hai</span><b>${money(dena)}</b></div></div>
+    <div class="card">
+      <div class="row"><input id="pq" placeholder="Naam ya phone se dhundo" value="${esc(partyQ)}" style="flex:1"><button class="btn" data-go="partyForm" data-ptype="${partyTab}">+ ${partyTab === "customer" ? "Customer" : "Supplier"}</button></div>
+      ${list.length ? `<div class="list">${list.map(({ p, b }) => `<button class="li" data-open-party="${p.id}"><span class="av">${esc(initials(p.name))}</span><span class="t"><b>${esc(p.name)}</b><span class="tiny muted">${esc(p.phone || "phone nahi")}</span></span><span class="r"><b class="${b > 0 ? "get" : b < 0 ? "give" : "muted"}">${money(Math.abs(b))}</b><span class="tiny muted">${b > 0 ? "lena hai" : b < 0 ? "dena hai" : "barabar"}</span></span></button>`).join("")}</div>`
+        : `<div class="empty">${D.parties.some((p) => p.type === partyTab) ? "Is naam se koi nahi mila." : `Abhi koi ${partyTab === "customer" ? "customer" : "supplier"} nahi. "+" dabakar jodo.`}</div>`}
+    </div>`,
+    bind() {
+      document.querySelectorAll("[data-ptab]").forEach((b) => (b.onclick = () => { partyTab = b.dataset.ptab; render(); }));
+      const pq = $("#pq"); pq.oninput = () => { partyQ = pq.value; const pos = pq.selectionStart; render(); const n = $("#pq"); n.focus(); n.setSelectionRange(pos, pos); };
+    },
+  };
+};
+
+V.partyPick = () => ({
+  title: "Kiska hisaab?",
+  html: `<div class="card"><p class="small muted">Party chuno – phir "Aapne diye" ya "Aapko mile" likho.</p>
+    ${D.parties.length ? `<div class="list">${D.parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map((p) => `<button class="li" data-open-party="${p.id}"><span class="av">${esc(initials(p.name))}</span><span class="t"><b>${esc(p.name)}</b><span class="tiny muted">${p.type === "customer" ? "Customer" : "Supplier"}</span></span><span class="r"><b>${money(Math.abs(balance(p.id)))}</b></span></button>`).join("")}</div>` : `<div class="empty">Pehle party jodo.</div>`}
+    <button class="btn ghost" data-go="partyForm" data-ptype="customer">+ Nayi party</button></div>`,
+});
+
+V.partyForm = ({ id, ptype }) => {
+  const p = id ? party(id) : { type: ptype || "customer" };
+  return {
+    title: id ? "Party edit" : "Nayi party",
+    html: `<form class="card" id="pf">
+      <div class="seg"><button type="button" data-pt="customer" class="${p.type === "customer" ? "on" : ""}">Customer</button><button type="button" data-pt="supplier" class="${p.type === "supplier" ? "on" : ""}">Supplier</button></div>
+      <label class="f">Naam<input id="pName" required maxlength="80" value="${esc(p.name || "")}"></label>
+      <label class="f">Mobile number<input id="pPhone" inputmode="tel" maxlength="15" value="${esc(p.phone || "")}"></label>
+      <label class="f">Pata (optional)<input id="pAddr" maxlength="150" value="${esc(p.address || "")}"></label>
+      <label class="f">GSTIN (optional)<input id="pGst" maxlength="20" value="${esc(p.gstin || "")}"></label>
+      ${!id ? `<label class="f">Purana baaki (optional) – ${p.type === "customer" ? "isse lena hai" : "isko dena hai"} ₹<input id="pOpen" type="number" min="0" step="any"></label>` : ""}
+      <button class="btn block" type="submit">Save karo</button></form>`,
+    bind() {
+      let type = p.type;
+      document.querySelectorAll("[data-pt]").forEach((b) => (b.onclick = () => { type = b.dataset.pt; document.querySelectorAll("[data-pt]").forEach((x) => x.classList.toggle("on", x === b)); }));
+      $("#pf").onsubmit = async (e) => {
+        e.preventDefault();
+        const doc = { ...(id ? p : { id: "p" + uid(), created: Date.now() }), type, name: val("pName"), phone: val("pPhone"), address: val("pAddr"), gstin: val("pGst") };
+        try {
+          await store.put("parties", doc);
+          const open = numv("pOpen");
+          if (!id && open > 0) await store.put("entries", { id: "e" + uid(), partyId: doc.id, kind: type === "customer" ? "gave" : "got", amount: r2(open), date: today(), note: "Purana baaki", created: Date.now() });
+          toast("Party save ho gayi"); stack.pop(); if (!id) stack.push({ view: "party", params: { id: doc.id } }); render();
+        } catch (err) { toast("Save nahi hua"); }
+      };
+    },
+  };
+};
+
+V.party = ({ id }) => {
+  const p = party(id);
+  if (!p) return { title: "Party", html: `<div class="card"><p>Ye party delete ho chuki hai.</p></div>` };
+  const b = balance(id);
+  let run = 0;
+  const rows = D.entries.filter((e) => e.partyId === id).sort(byDate).map((e) => { run = r2(run + (e.kind === "gave" ? e.amount : -e.amount)); return { e, run }; }).reverse();
+  const biz = D.settings.bizName || "hamari dukaan";
+  const remind = b > 0 ? `Namaste ${p.name} ji, ${biz} ki taraf se yaad dilana tha – aapka ${money(b)} baaki hai. Kripya jaldi bhugtan karein.${D.settings.upi ? "\nUPI: " + D.settings.upi : ""}\nDhanyavaad 🙏` : "";
+  const stmt = `${biz} – ${p.name} ka hisaab\n` + rows.slice().reverse().map(({ e, run }) => `${dmy(e.date)}  ${e.kind === "gave" ? "Diye" : "Mile"} ${money(e.amount)}${e.note ? " (" + e.note + ")" : ""}  → baaki ${money(Math.abs(run))} ${run >= 0 ? "lena" : "dena"}`).join("\n") + `\n\nKul: ${money(Math.abs(b))} ${b > 0 ? "aapse lena hai" : b < 0 ? "aapko dena hai" : "hisaab barabar"}`;
+  const ck = "party:" + id;
+  return {
+    title: p.name,
+    html: `
+    <div class="hero ${b > 0 ? "get" : b < 0 ? "give" : "zero"}"><span class="small">${b > 0 ? "Aapko milenge" : b < 0 ? "Aapko dene hain" : "Hisaab barabar"}</span><b>${money(Math.abs(b))}</b><span class="tiny">${esc(p.phone || "")}</span></div>
+    <div class="grid2">
+      <button class="btn red" data-go="entryForm" data-pid="${id}" data-kind="gave">↑ Aapne diye<br><span class="tiny">udhaar / maal diya / payment ki</span></button>
+      <button class="btn green" data-go="entryForm" data-pid="${id}" data-kind="got">↓ Aapko mile<br><span class="tiny">payment aayi / maal liya</span></button>
+    </div>
+    <div class="row">
+      ${p.phone && remind ? `<a class="btn sm ghost" href="${esc(waLink(p.phone, remind))}" target="_blank" rel="noopener">WhatsApp reminder</a>` : ""}
+      ${remind ? `<button class="btn sm line" id="copyRemind">Reminder copy</button>` : ""}
+      <button class="btn sm line" id="copyStmt">Hisaab ki list bhejo</button>
+      <button class="btn sm line" data-go="billForm" data-type="${p.type === "customer" ? "sale" : "purchase"}" data-pid="${id}">+ Bill</button>
+      ${p.phone ? `<span class="small muted">Call: <span class="num">${esc(p.phone)}</span></span>` : ""}
+    </div>
+    <div class="card"><header><h2>Entries</h2><span class="tiny muted">${rows.length} entries</span></header>
+      ${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Detail</th><th class="r">Diye</th><th class="r">Mile</th><th class="r">Baaki</th><th></th></tr></thead><tbody>
+      ${rows.map(({ e, run }) => `<tr><td class="nw num">${dmy(e.date)}</td><td>${esc(e.note || (e.billId ? "Bill" : ""))}${e.billId ? ` <button class="pill" data-open-bill="${e.billId}">bill</button>` : ""}</td><td class="r num give">${e.kind === "gave" ? money(e.amount) : ""}</td><td class="r num get">${e.kind === "got" ? money(e.amount) : ""}</td><td class="r num ${run > 0 ? "get" : run < 0 ? "give" : ""}">${money(Math.abs(run))}</td>
+        <td>${e.billId ? "" : confirmKey === "e:" + e.id ? `<button class="btn sm red" data-del-entry="${e.id}">Haan</button>` : `<button class="x" data-ask="e:${e.id}" aria-label="Delete">✕</button>`}</td></tr>`).join("")}
+      </tbody></table></div>` : `<div class="empty">Abhi koi entry nahi. Upar ke button se "Aapne diye" ya "Aapko mile" likho.</div>`}
+    </div>
+    <pre class="share" id="sharePre" hidden></pre>
+    <div class="row">
+      <button class="btn sm line" data-go="partyForm" data-pid="${id}">Party edit</button>
+      ${confirmKey === ck ? `<div class="confirm">Party aur iski saari entries delete? <button class="btn sm red" id="delParty">Haan, delete</button><button class="btn sm line" data-ask="">Nahi</button></div>` : `<button class="btn sm line" data-ask="${ck}">Party delete</button>`}
+    </div>`,
+    bind() {
+      const pre = $("#sharePre");
+      const share = (t) => { pre.hidden = false; pre.textContent = t; copyOrShare(p.name, t); };
+      $("#copyRemind") && ($("#copyRemind").onclick = () => share(remind));
+      $("#copyStmt").onclick = () => share(stmt);
+      document.querySelectorAll("[data-del-entry]").forEach((bt) => (bt.onclick = async () => { confirmKey = null; await store.del("entries", bt.dataset.delEntry); toast("Entry delete ho gayi"); render(); }));
+      $("#delParty") && ($("#delParty").onclick = async () => {
+        confirmKey = null;
+        for (const e of D.entries.filter((x) => x.partyId === id)) await store.del("entries", e.id);
+        await store.del("parties", id); toast("Party delete ho gayi"); back();
+      });
+    },
+  };
+};
+
+V.entryForm = ({ pid, kind }) => {
+  const p = party(pid);
+  return {
+    title: (kind === "gave" ? "Aapne diye – " : "Aapko mile – ") + (p?.name || ""),
+    html: `<form class="card" id="ef">
+      <div class="hero ${kind === "gave" ? "give" : "get"}" style="padding:10px"><span class="small">${kind === "gave" ? "Aapne diye (inse lena badhega)" : "Aapko mile (inse lena kam hoga)"}</span></div>
+      <label class="f">Rakam ₹<input id="eAmt" type="number" min="0.01" step="any" required inputmode="decimal" autofocus></label>
+      <label class="f">Date<input id="eDate" type="date" value="${today()}" required></label>
+      <label class="f">Detail (optional)<input id="eNote" maxlength="120" placeholder="${kind === "gave" ? "Jaise: 2 kg cheeni udhaar" : "Jaise: UPI se payment"}"></label>
+      <button class="btn block ${kind === "gave" ? "red" : "green"}" type="submit">Save karo</button></form>`,
+    bind() {
+      $("#ef").onsubmit = async (e) => {
+        e.preventDefault();
+        const amt = r2(numv("eAmt")); if (!(amt > 0)) return toast("Rakam likho");
+        try { await store.put("entries", { id: "e" + uid(), partyId: pid, kind, amount: amt, date: val("eDate") || today(), note: val("eNote"), created: Date.now() }); toast("Entry save ho gayi"); back(); }
+        catch (err) { toast("Save nahi hua"); }
+      };
+    },
+  };
+};
+
+// ---------- BILLS ----------
+let billTab = "sale", billQ = "";
+V.bills = () => {
+  const q = keyOf(billQ);
+  const list = D.bills.filter((b) => b.type === billTab && (!q || keyOf(b.no + " " + (party(b.partyId)?.name || "cash")).includes(q))).sort(byDate).reverse();
+  const ms = monthStart();
+  const mon = r2(D.bills.filter((b) => b.type === billTab && b.date >= ms).reduce((s, b) => s + billCalc(b).total, 0));
+  const due = r2(D.bills.filter((b) => b.type === billTab).reduce((s, b) => s + Math.max(0, billCalc(b).total - (b.paid || 0)), 0));
+  return {
+    title: "Bill",
+    html: `
+    <div class="seg"><button data-btab="sale" class="${billTab === "sale" ? "on" : ""}">Sale (bikri)</button><button data-btab="purchase" class="${billTab === "purchase" ? "on" : ""}">Purchase (kharid)</button></div>
+    <div class="grid2"><div class="stat"><span>Is mahine</span><b>${money(mon)}</b></div><div class="stat ${billTab === "sale" ? "get" : "give"}"><span>Bills ka baaki</span><b>${money(due)}</b></div></div>
+    <div class="card">
+      <div class="row"><input id="bq" placeholder="Bill no. ya party se dhundo" value="${esc(billQ)}" style="flex:1"><button class="btn" data-go="billForm" data-type="${billTab}">+ Naya bill</button></div>
+      ${list.length ? `<div class="list">${list.map((b) => { const c = billCalc(b), dueB = r2(c.total - (b.paid || 0)); return `<button class="li" data-open-bill="${b.id}"><span class="av">${b.type === "sale" ? "🧾" : "📥"}</span><span class="t"><b>${esc(party(b.partyId)?.name || "Cash")}</b><span class="tiny muted">${esc(b.no)} · ${dmy(b.date)} · ${b.lines.length} items</span></span><span class="r"><b>${money(c.total)}</b>${dueB > 0 ? `<span class="pill ${b.type === "sale" ? "get" : "give"}">${money(dueB)} baaki</span>` : `<span class="pill">paid</span>`}</span></button>`; }).join("")}</div>`
+        : `<div class="empty">Abhi koi ${billTab === "sale" ? "sale" : "purchase"} bill nahi.</div>`}
+    </div>`,
+    bind() {
+      document.querySelectorAll("[data-btab]").forEach((b) => (b.onclick = () => { billTab = b.dataset.btab; render(); }));
+      const bq = $("#bq"); bq.oninput = () => { billQ = bq.value; const pos = bq.selectionStart; render(); const n = $("#bq"); n.focus(); n.setSelectionRange(pos, pos); };
+    },
+  };
+};
+
+// bill draft persists across re-renders of the form
+let draft = null;
+function newDraft(type, pid, editId) {
+  if (editId) { const b = D.bills.find((x) => x.id === editId); draft = JSON.parse(JSON.stringify(b)); draft.editing = true; draft.paidTouched = true; return; }
+  draft = { id: "b" + uid(), type, no: nextBillNo(type), partyId: pid || "", date: today(), lines: [{ itemId: "", name: "", qty: 1, rate: "", gst: 0, unit: "" }], discount: 0, paid: null, payMode: "Cash", note: "", created: Date.now(), paidTouched: false };
+}
+function draftCalc(d) {
+  const c = billCalc({ ...d, lines: d.lines.map((l) => ({ ...l, qty: Number(l.qty) || 0, rate: Number(l.rate) || 0, gst: Number(l.gst) || 0 })) });
+  const paid = d.paid == null ? (d.partyId ? 0 : c.total) : d.paid;
+  return { c, paid };
+}
+function lineHint(d, l) {
+  const sale = d.type === "sale";
+  const it = l.itemId ? item(l.itemId) : D.items.find((x) => keyOf(x.name) === keyOf(l.name));
+  let hint = "";
+  if (it) {
+    if (sale) hint = `Stock: ${r2(it.stock)} ${esc(it.unit || "")}${it.buyPrice ? ` · kharid ${money(it.buyPrice)}` : ""}${Number(l.qty) > it.stock ? ' · <span class="give">stock kam hai</span>' : ""}`;
+    else { const lb = lastBuy(it.id, d.date, d.id); hint = lb ? `Pichhla rate ${money(lb.rate)} (${dmy(lb.date)}, ${esc(lb.party)}) ${l.rate !== "" ? chg(Number(l.rate), lb.rate) : ""}` : "Is item ki pehli kharid"; }
+  } else if (l.name) hint = "Naya item – save karne par saamaan list mein jud jayega";
+  return hint + (Number(l.qty) && Number(l.rate) ? ` · ${money(Number(l.qty) * Number(l.rate))}` : "");
+}
+function totalsHtml(d) {
+  const sale = d.type === "sale", { c, paid } = draftCalc(d);
+  return `<div><span>Saamaan</span><span class="num">${money(c.sub)}</span></div>
+    ${c.gst ? `<div><span>GST</span><span class="num">${money(c.gst)}</span></div>` : ""}
+    ${d.discount ? `<div><span>Discount</span><span class="num">−${money(d.discount)}</span></div>` : ""}
+    <div class="big"><span>Total</span><span class="num">${money(c.total)}</span></div>
+    <div><span>${sale ? "Mila" : "Diya"}</span><span class="num">${money(paid)}</span></div>
+    <div class="${c.total - paid > 0 ? (sale ? "get" : "give") : ""}"><span>Baaki${c.total - paid > 0 && !d.partyId ? " (party chuno, warna baaki nahi likha jayega)" : ""}</span><span class="num">${money(Math.max(0, c.total - paid))}</span></div>`;
+}
+V.billForm = ({ type, pid, editId }) => {
+  if (!draft || draft._for !== (editId || type + (pid || ""))) { newDraft(type, pid, editId); draft._for = editId || type + (pid || ""); }
+  const d = draft, sale = d.type === "sale";
+  const { paid } = draftCalc(d);
+  const parties = D.parties.filter((p) => p.type === (sale ? "customer" : "supplier")).sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    title: (d.editing ? "Bill edit – " : sale ? "Sale bill – " : "Purchase bill – ") + d.no,
+    html: `<form class="card" id="bf" autocomplete="off">
+      <div class="grid2">
+        <label class="f">${sale ? "Customer" : "Supplier"}<select id="bParty"><option value="">Cash (bina naam)</option>${parties.map((p) => `<option value="${p.id}" ${p.id === d.partyId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}<option value="__new" ${d.partyId === "__new" ? "selected" : ""}>+ Nayi party</option></select></label>
+        <label class="f">Date<input id="bDate" type="date" value="${d.date}"></label>
+      </div>
+      <label class="f" id="bNewWrap" ${d.partyId === "__new" ? "" : "hidden"}>Nayi party ka naam<input id="bNewName" maxlength="80" value="${esc(d.newName || "")}"></label>
+      <h2>Saamaan</h2>
+      <div class="lines" id="lines">${d.lines.map((l, i) => `<div class="bline">
+          <label class="f ln-item">Item<input data-l="${i}" data-k="name" list="itemDL" value="${esc(l.name)}" placeholder="Item ka naam"></label>
+          <label class="f">Qty<input data-l="${i}" data-k="qty" type="number" min="0" step="any" value="${l.qty}"></label>
+          <label class="f">Rate ₹<input data-l="${i}" data-k="rate" type="number" min="0" step="any" value="${l.rate}"></label>
+          <label class="f">GST %<input data-l="${i}" data-k="gst" type="number" min="0" max="40" step="any" value="${l.gst || ""}" placeholder="0"></label>
+          <button type="button" class="x" data-rm="${i}" aria-label="Hatao" style="margin-top:18px">✕</button>
+          <div class="hint" id="hint${i}">${lineHint(d, l)}</div></div>`).join("")}</div>
+      <datalist id="itemDL">${D.items.map((i) => `<option value="${esc(i.name)}">`).join("")}</datalist>
+      <div><button type="button" class="btn sm ghost" id="addLine">+ Aur item</button></div>
+      <div class="grid2">
+        <label class="f">Discount ₹<input id="bDisc" type="number" min="0" step="any" value="${d.discount || ""}"></label>
+        <label class="f">${sale ? "Kitna paisa mila" : "Kitna paisa diya"} ₹<input id="bPaid" type="number" min="0" step="any" value="${r2(paid)}"></label>
+        <label class="f">Payment<select id="bMode">${["Cash", "UPI", "Bank", "Cheque"].map((m) => `<option ${m === d.payMode ? "selected" : ""}>${m}</option>`).join("")}</select></label>
+        <label class="f">Note<input id="bNote" maxlength="120" value="${esc(d.note || "")}"></label>
+      </div>
+      <div class="totals" id="bTotals">${totalsHtml(d)}</div>
+      <button class="btn block" type="submit" id="bSave">${d.editing ? "Bill update karo" : "Bill save karo"}</button></form>`,
+    bind() {
+      // typing never rebuilds the form – only hints and totals refresh (so a tap on Save is never lost)
+      const refresh = () => {
+        d.lines.forEach((l, i) => { const h = document.getElementById("hint" + i); if (h) h.innerHTML = lineHint(d, l); });
+        $("#bTotals").innerHTML = totalsHtml(d);
+        if (!d.paidTouched) $("#bPaid").value = r2(draftCalc(d).paid);
+      };
+      const sync = () => { d.date = val("bDate") || today(); d.discount = r2(numv("bDisc")); d.payMode = val("bMode"); d.note = val("bNote"); };
+      $("#bParty").onchange = () => {
+        d.partyId = $("#bParty").value; if (!d.paidTouched) d.paid = null;
+        $("#bNewWrap").hidden = d.partyId !== "__new"; if (d.partyId === "__new") $("#bNewName").focus();
+        refresh();
+      };
+      $("#bNewName").oninput = (e) => { d.newName = e.target.value; };
+      ["bDate", "bDisc", "bMode", "bNote"].forEach((id) => ($("#" + id).oninput = () => { sync(); refresh(); }));
+      $("#bPaid").oninput = () => { d.paid = r2(numv("bPaid")); d.paidTouched = true; $("#bTotals").innerHTML = totalsHtml(d); };
+      $("#lines").oninput = (e) => {
+        const { l, k } = e.target.dataset; if (l == null) return;
+        const line = d.lines[+l]; line[k] = e.target.value;
+        if (k === "name") {
+          const it = D.items.find((x) => keyOf(x.name) === keyOf(e.target.value));
+          line.itemId = it ? it.id : "";
+          if (it) {
+            line.rate = sale ? (it.salePrice ?? "") : (it.buyPrice ?? ""); line.gst = it.gst || 0; line.unit = it.unit || "";
+            const row = e.target.closest(".bline");
+            row.querySelector('[data-k="rate"]').value = line.rate; row.querySelector('[data-k="gst"]').value = line.gst || "";
+          }
+        }
+        if (!d.paidTouched) d.paid = null;
+        refresh();
+      };
+      const reRender = (focusSel) => { render(); const n = focusSel && document.querySelector(focusSel); if (n) n.focus(); };
+      $("#lines").onclick = (e) => { const i = e.target.dataset.rm; if (i == null) return; d.lines.splice(+i, 1); if (!d.lines.length) d.lines.push({ itemId: "", name: "", qty: 1, rate: "", gst: 0 }); if (!d.paidTouched) d.paid = null; reRender(); };
+      $("#addLine").onclick = () => { d.lines.push({ itemId: "", name: "", qty: 1, rate: "", gst: 0 }); reRender(`[data-l="${d.lines.length - 1}"][data-k="name"]`); };
+      $("#bf").onsubmit = async (e) => { e.preventDefault(); sync(); await saveBill(); };
+    },
+  };
+};
+
+async function saveBill() {
+  const d = draft, sale = d.type === "sale";
+  const lines = d.lines.filter((l) => l.name.trim() && Number(l.qty) > 0).map((l) => ({ ...l, name: l.name.trim(), qty: Number(l.qty), rate: r2(Number(l.rate) || 0), gst: Number(l.gst) || 0 }));
+  if (!lines.length) return toast("Kam se kam ek item aur qty likho");
+  const btn = $("#bSave"); btn.disabled = true;
+  try {
+    // party
+    let pid = d.partyId;
+    if (pid === "__new") {
+      const name = (d.newName || "").trim(); if (!name) { btn.disabled = false; return toast("Nayi party ka naam likho"); }
+      const p = { id: "p" + uid(), type: sale ? "customer" : "supplier", name, phone: "", created: Date.now() };
+      await store.put("parties", p); pid = p.id;
+    }
+    // undo old bill effects when editing
+    const old = d.editing ? D.bills.find((b) => b.id === d.id) : null;
+    const stockDelta = new Map();
+    const addDelta = (id, q) => stockDelta.set(id, (stockDelta.get(id) || 0) + q);
+    if (old) old.lines.forEach((l) => l.itemId && addDelta(l.itemId, old.type === "sale" ? l.qty : -l.qty));
+    // items: create new ones, update prices
+    for (const l of lines) {
+      let it = (l.itemId && item(l.itemId)) || D.items.find((x) => keyOf(x.name) === keyOf(l.name));
+      if (!it) { it = { id: "i" + uid(), name: l.name, unit: l.unit || "pcs", salePrice: sale ? l.rate : null, buyPrice: sale ? null : l.rate, gst: l.gst, stock: 0, lowAt: null, created: Date.now() }; await store.put("items", it); D.items.some((x) => x.id === it.id) || D.items.push(it); }
+      l.itemId = it.id;
+      if (sale) l.cost = it.buyPrice || 0;   // for profit report
+      addDelta(it.id, sale ? -l.qty : l.qty);
+    }
+    for (const [id, dq] of stockDelta) {
+      const it = item(id); if (!it || !dq) continue;
+      const upd = { ...it, stock: r2((it.stock || 0) + dq) };
+      const ln = lines.find((l) => l.itemId === id);
+      if (ln && !sale && (!lastBuy(id, null, d.id) || d.date >= lastBuy(id, null, d.id).date)) upd.buyPrice = ln.rate;
+      if (ln && sale && ln.rate) upd.salePrice = ln.rate;
+      await store.put("items", upd);
+    }
+    const c = billCalc({ lines, discount: d.discount });
+    const paid = r2(d.paid == null ? (pid ? 0 : c.total) : Math.min(d.paid, c.total));
+    const bill = { id: d.id, type: d.type, no: d.no, partyId: pid || "", date: d.date, lines, discount: d.discount || 0, paid, payMode: d.payMode, note: d.note, created: d.created };
+    await store.put("bills", bill);
+    // ledger entries for this bill
+    for (const e of D.entries.filter((x) => x.billId === bill.id)) await store.del("entries", e.id);
+    if (pid) {
+      await store.put("entries", { id: "e" + uid(), partyId: pid, kind: sale ? "gave" : "got", amount: c.total, date: bill.date, note: `${sale ? "Sale" : "Purchase"} bill ${bill.no}`, billId: bill.id, created: Date.now() });
+      if (paid > 0) await store.put("entries", { id: "e" + uid(), partyId: pid, kind: sale ? "got" : "gave", amount: paid, date: bill.date, note: `${bill.payMode} – bill ${bill.no}`, billId: bill.id, created: Date.now() + 1 });
+    }
+    draft = null;
+    toast("Bill save ho gaya ✓");
+    stack.pop(); stack.push({ view: "bill", params: { id: bill.id } }); render(); window.scrollTo(0, 0);
+  } catch (err) { toast(err?.code === "quota_exceeded" ? "Storage bhar gaya" : "Bill save nahi hua – dobara try karo"); btn.disabled = false; }
+}
+
+function billText(b) {
+  const c = billCalc(b), s = D.settings, p = party(b.partyId);
+  const lines = b.lines.map((l, i) => `${i + 1}. ${l.name}  ${l.qty} x ${money(l.rate)} = ${money(l.qty * l.rate)}${l.gst ? ` (+GST ${l.gst}%)` : ""}`).join("\n");
+  return `*${s.bizName || "Bill"}*${s.phone ? "\nPh: " + s.phone : ""}${s.gstin ? "\nGSTIN: " + s.gstin : ""}
+${b.type === "sale" ? "Bill" : "Purchase"} No: ${b.no}   Date: ${dmy(b.date)}
+${p ? (b.type === "sale" ? "Customer: " : "Supplier: ") + p.name : "Cash"}
+------------------------------
+${lines}
+------------------------------
+Saamaan: ${money(c.sub)}${c.gst ? "\nGST: " + money(c.gst) : ""}${b.discount ? "\nDiscount: -" + money(b.discount) : ""}
+*Total: ${money(c.total)}*
+${b.type === "sale" ? "Mila" : "Diya"}: ${money(b.paid)} (${b.payMode})${c.total - b.paid > 0 ? "\nBaaki: " + money(c.total - b.paid) : ""}${s.upi && b.type === "sale" ? "\nUPI: " + s.upi : ""}
+Dhanyavaad 🙏`;
+}
+
+V.bill = ({ id }) => {
+  const b = D.bills.find((x) => x.id === id);
+  if (!b) return { title: "Bill", html: `<div class="card"><p>Ye bill delete ho chuka hai.</p></div>` };
+  const c = billCalc(b), p = party(b.partyId), s = D.settings, sale = b.type === "sale", due = r2(c.total - b.paid);
+  const ck = "bill:" + id;
+  const txt = billText(b);
+  return {
+    title: (sale ? "Bill " : "Purchase ") + b.no,
+    html: `
+    <div class="bill-paper">
+      <div class="bh"><div><h3>${esc(s.bizName || "Meri Dukaan")}</h3><div class="tiny muted">${esc([s.address, s.phone, s.gstin && "GSTIN " + s.gstin].filter(Boolean).join(" · "))}</div></div>
+        <div style="text-align:right"><b>${sale ? "TAX INVOICE" : "PURCHASE"}</b><div class="small num">${esc(b.no)} · ${dmy(b.date)}</div></div></div>
+      <div class="small">${sale ? "Customer" : "Supplier"}: <b>${esc(p?.name || "Cash")}</b>${p?.phone ? " · " + esc(p.phone) : ""}${p?.gstin ? " · GSTIN " + esc(p.gstin) : ""}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">GST</th><th class="r">Amount</th></tr></thead><tbody>
+        ${b.lines.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.name)}</td><td class="r num">${r2(l.qty)}</td><td class="r num">${money(l.rate)}</td><td class="r num">${l.gst ? l.gst + "%" : "–"}</td><td class="r num">${money(l.qty * l.rate * (1 + (l.gst || 0) / 100))}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="totals">
+        <div><span>Saamaan</span><span class="num">${money(c.sub)}</span></div>
+        ${c.gst ? `<div><span>GST (CGST ${money(c.gst / 2)} + SGST ${money(c.gst / 2)})</span><span class="num">${money(c.gst)}</span></div>` : ""}
+        ${b.discount ? `<div><span>Discount</span><span class="num">−${money(b.discount)}</span></div>` : ""}
+        <div class="big"><span>Total</span><span class="num">${money(c.total)}</span></div>
+        <div><span>${sale ? "Mila" : "Diya"} (${esc(b.payMode)})</span><span class="num">${money(b.paid)}</span></div>
+        ${due > 0 ? `<div class="${sale ? "get" : "give"}"><span>Baaki</span><span class="num">${money(due)}</span></div>` : ""}
+      </div>
+      ${b.note ? `<div class="small muted">Note: ${esc(b.note)}</div>` : ""}
+    </div>
+    <div class="row">
+      ${p?.phone ? `<a class="btn sm" href="${esc(waLink(p.phone, txt))}" target="_blank" rel="noopener">WhatsApp par bhejo</a>` : ""}
+      <button class="btn sm ghost" id="shareBill">Bill copy / share</button>
+      <button class="btn sm line" data-go="billForm" data-edit="${id}">Edit</button>
+      ${confirmKey === ck ? `<div class="confirm">Bill delete? Stock aur khata wapas ho jayega. <button class="btn sm red" id="delBill">Haan</button><button class="btn sm line" data-ask="">Nahi</button></div>` : `<button class="btn sm line" data-ask="${ck}">Delete</button>`}
+    </div>
+    <pre class="share" id="sharePre" hidden></pre>`,
+    bind() {
+      $("#shareBill").onclick = () => { const pre = $("#sharePre"); pre.hidden = false; pre.textContent = txt; copyOrShare("Bill " + b.no, txt); };
+      $("#delBill") && ($("#delBill").onclick = async () => {
+        confirmKey = null;
+        for (const l of b.lines) { const it = l.itemId && item(l.itemId); if (it) await store.put("items", { ...it, stock: r2((it.stock || 0) + (sale ? l.qty : -l.qty)) }); }
+        for (const e of D.entries.filter((x) => x.billId === id)) await store.del("entries", e.id);
+        await store.del("bills", id); toast("Bill delete ho gaya"); back();
+      });
+    },
+  };
+};
+
+// ---------- ITEMS ----------
+let itemQ = "";
+V.items = () => {
+  const q = keyOf(itemQ);
+  const list = D.items.filter((i) => !q || keyOf(i.name).includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  const stockVal = r2(D.items.reduce((s, i) => s + Math.max(0, i.stock || 0) * (i.buyPrice || 0), 0));
+  const low = D.items.filter((i) => i.lowAt != null && i.lowAt !== "" && i.stock <= i.lowAt).length;
+  return {
+    title: "Saamaan",
+    html: `
+    <div class="grid2"><div class="stat"><span>Stock ki keemat (kharid rate)</span><b>${money(stockVal)}</b></div><div class="stat ${low ? "give" : ""}"><span>Kam stock wale</span><b>${low}</b></div></div>
+    <div class="card">
+      <div class="row"><input id="iq" placeholder="Saamaan dhundo" value="${esc(itemQ)}" style="flex:1"><button class="btn" data-go="itemForm">+ Saamaan</button></div>
+      ${list.length ? `<div class="list">${list.map((i) => { const isLow = i.lowAt != null && i.lowAt !== "" && i.stock <= i.lowAt; return `<button class="li" data-open-item="${i.id}"><span class="av">📦</span><span class="t"><b>${esc(i.name)}</b><span class="tiny muted">Bikri ${i.salePrice != null ? money(i.salePrice) : "–"} · Kharid ${i.buyPrice != null ? money(i.buyPrice) : "–"}</span></span><span class="r"><span class="pill ${isLow ? "give" : ""}">${r2(i.stock)} ${esc(i.unit || "")}</span></span></button>`; }).join("")}</div>`
+        : `<div class="empty">${D.items.length ? "Is naam se kuch nahi mila." : "Abhi koi saamaan nahi. '+ Saamaan' se jodo, ya bill banate waqt naya naam likho – apne aap jud jayega."}</div>`}
+    </div>`,
+    bind() { const iq = $("#iq"); iq.oninput = () => { itemQ = iq.value; const pos = iq.selectionStart; render(); const n = $("#iq"); n.focus(); n.setSelectionRange(pos, pos); }; },
+  };
+};
+V.itemForm = ({ id }) => {
+  const it = id ? item(id) : {};
+  return {
+    title: id ? "Saamaan edit" : "Naya saamaan",
+    html: `<form class="card" id="itf">
+      <label class="f">Naam<input id="iName" required maxlength="80" value="${esc(it.name || "")}"></label>
+      <div class="grid2">
+        <label class="f">Unit<input id="iUnit" list="unitDL" value="${esc(it.unit || "pcs")}" maxlength="15"></label>
+        <label class="f">GST %<input id="iGst" type="number" min="0" max="40" step="any" value="${it.gst || ""}" placeholder="0"></label>
+        <label class="f">Bechne ka rate ₹<input id="iSale" type="number" min="0" step="any" value="${it.salePrice ?? ""}"></label>
+        <label class="f">Kharid ka rate ₹<input id="iBuy" type="number" min="0" step="any" value="${it.buyPrice ?? ""}"></label>
+        <label class="f">${id ? "Stock abhi" : "Shuru ka stock"}<input id="iStock" type="number" step="any" value="${it.stock ?? ""}"></label>
+        <label class="f">Kam stock alert (is se kam ho to)<input id="iLow" type="number" min="0" step="any" value="${it.lowAt ?? ""}"></label>
+      </div>
+      <datalist id="unitDL">${["pcs", "kg", "g", "litre", "dozen", "packet", "box", "ream", "metre", "set", "bag"].map((u) => `<option value="${u}">`).join("")}</datalist>
+      <button class="btn block" type="submit">Save karo</button></form>`,
+    bind() {
+      $("#itf").onsubmit = async (e) => {
+        e.preventDefault();
+        const n = (id2) => (val(id2) === "" ? null : r2(numv(id2)));
+        const doc = { ...(id ? it : { id: "i" + uid(), created: Date.now() }), name: val("iName"), unit: val("iUnit") || "pcs", gst: numv("iGst"), salePrice: n("iSale"), buyPrice: n("iBuy"), stock: r2(numv("iStock")), lowAt: n("iLow") };
+        const dup = D.items.find((x) => x.id !== doc.id && keyOf(x.name) === keyOf(doc.name));
+        if (dup) return toast("Is naam ka saamaan pehle se hai");
+        try { await store.put("items", doc); toast("Saamaan save ho gaya"); stack.pop(); if (!id) stack.push({ view: "item", params: { id: doc.id } }); render(); } catch (err) { toast("Save nahi hua"); }
+      };
+    },
+  };
+};
+V.item = ({ id }) => {
+  const it = item(id);
+  if (!it) return { title: "Saamaan", html: `<div class="card"><p>Ye saamaan delete ho chuka hai.</p></div>` };
+  const buys = [], sells = [];
+  D.bills.forEach((b) => b.lines.forEach((l) => { if (l.itemId === id) (b.type === "purchase" ? buys : sells).push({ ...l, date: b.date, created: b.created, bill: b }); }));
+  buys.sort(byDate); sells.sort(byDate);
+  const soldQty = r2(sells.reduce((s, l) => s + l.qty, 0)), soldAmt = r2(sells.reduce((s, l) => s + l.qty * l.rate, 0));
+  const ck = "item:" + id;
+  return {
+    title: it.name,
+    html: `
+    <div class="grid3">
+      <div class="stat ${it.lowAt != null && it.stock <= it.lowAt ? "give" : ""}"><span>Stock</span><b>${r2(it.stock)} ${esc(it.unit || "")}</b></div>
+      <div class="stat"><span>Bechne ka rate</span><b>${it.salePrice != null ? money(it.salePrice) : "–"}</b></div>
+      <div class="stat"><span>Kharid ka rate</span><b>${it.buyPrice != null ? money(it.buyPrice) : "–"}</b></div>
+      <div class="stat"><span>Ab tak bika</span><b>${soldQty} ${esc(it.unit || "")}</b></div>
+      <div class="stat"><span>Bikri ki rakam</span><b>${money(soldAmt)}</b></div>
+      <div class="stat"><span>Munafa / pc</span><b>${it.salePrice != null && it.buyPrice != null ? money(it.salePrice - it.buyPrice) : "–"}</b></div>
+    </div>
+    <div class="card"><header><h2>Stock badlo</h2></header>
+      <div class="row"><input id="adjQ" type="number" step="any" placeholder="Kitna" style="flex:1"><button class="btn sm green" id="adjIn">+ Stock aaya</button><button class="btn sm red" id="adjOut">− Stock gaya</button></div>
+      <p class="tiny muted">Bill se stock apne aap badalta hai. Ye sirf toota-phoota, gift ya ginti theek karne ke liye.</p></div>
+    <div class="card"><header><h2>Kharid ka rate – kab kitna</h2></header>
+      ${buys.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th class="r">Qty</th><th class="r">Rate</th><th>Remark</th></tr></thead><tbody>
+        ${buys.slice().reverse().map((l, i, a) => `<tr><td class="nw num">${dmy(l.date)}</td><td>${esc(party(l.bill.partyId)?.name || "Cash")}</td><td class="r num">${r2(l.qty)}</td><td class="r num">${money(l.rate)}</td><td>${a[i + 1] ? chg(l.rate, a[i + 1].rate) : '<span class="tiny muted">pehli kharid</span>'}</td></tr>`).join("")}
+      </tbody></table></div>` : `<div class="empty">Abhi is item ki koi purchase bill nahi.</div>`}
+    </div>
+    <div class="row">
+      <button class="btn sm line" data-go="itemForm" data-iid="${id}">Edit</button>
+      ${confirmKey === ck ? `<div class="confirm">Saamaan delete? (Purane bill nahi badlenge) <button class="btn sm red" id="delItem">Haan</button><button class="btn sm line" data-ask="">Nahi</button></div>` : `<button class="btn sm line" data-ask="${ck}">Delete</button>`}
+    </div>`,
+    bind() {
+      const adj = async (sign) => { const q = numv("adjQ"); if (!q) return toast("Kitna likho"); await store.put("items", { ...it, stock: r2((it.stock || 0) + sign * q) }); toast("Stock update ho gaya"); render(); };
+      $("#adjIn").onclick = () => adj(1); $("#adjOut").onclick = () => adj(-1);
+      $("#delItem") && ($("#delItem").onclick = async () => { confirmKey = null; await store.del("items", id); toast("Saamaan delete ho gaya"); back(); });
+    },
+  };
+};
+
+// ---------- MORE ----------
+V.more = () => ({
+  title: "Aur",
+  html: `<div class="card"><div class="list">
+    <button class="li" data-go="expenses"><span class="av">💸</span><span class="t"><b>Kharcha</b><span class="tiny muted">Kiraya, bijli, salary, chai-paani…</span></span><span class="r">›</span></button>
+    <button class="li" data-go="reports"><span class="av">📊</span><span class="t"><b>Report</b><span class="tiny muted">Bikri, kharid, munafa, GST, Excel</span></span><span class="r">›</span></button>
+    <button class="li" data-go="settings"><span class="av">⚙️</span><span class="t"><b>Dukaan ki details aur backup</b><span class="tiny muted">Naam, phone, GSTIN, UPI · backup / restore</span></span><span class="r">›</span></button>
+  </div></div>
+  <p class="tiny muted" style="text-align:center">${mode === "db" ? "Data online save ho raha hai." : "Data is phone/browser mein save hai – backup zaroor lo."}</p>`,
+});
+
+const EXP_CATS = ["Kiraya", "Bijli", "Salary", "Chai-paani", "Transport", "Phone/Internet", "Maintenance", "Packing", "Aur"];
+let expMonth = today().slice(0, 7);
+V.expenses = () => {
+  const list = D.expenses.filter((e) => e.date.startsWith(expMonth)).sort(byDate).reverse();
+  const total = r2(list.reduce((s, e) => s + e.amount, 0));
+  const byCat = {}; list.forEach((e) => (byCat[e.category] = r2((byCat[e.category] || 0) + e.amount)));
+  const max = Math.max(1, ...Object.values(byCat));
+  return {
+    title: "Kharcha",
+    html: `
+    <div class="card">
+      <div class="row"><label class="f" style="flex:1">Mahina<input id="expM" type="month" value="${expMonth}"></label><button class="btn" data-go="expenseForm">+ Kharcha</button></div>
+      <div class="stat give"><span>Is mahine ka kharcha</span><b>${money(total)}</b></div>
+      ${Object.keys(byCat).length ? `<div class="bars">${Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="b"><span>${esc(c)}</span><div><i style="width:${(v / max) * 100}%"></i></div><span>${money(v)}</span></div>`).join("")}</div>` : ""}
+    </div>
+    <div class="card">${list.length ? `<div class="list">${list.map((e) => `<div class="li" style="cursor:default"><span class="av">💸</span><span class="t"><b>${esc(e.category)}</b><span class="tiny muted">${dmy(e.date)} · ${esc(e.mode || "Cash")}${e.note ? " · " + esc(e.note) : ""}</span></span><span class="r"><b class="give">${money(e.amount)}</b>${confirmKey === "x:" + e.id ? `<button class="btn sm red" data-del-exp="${e.id}">Delete</button>` : `<button class="x" data-ask="x:${e.id}" aria-label="Delete">✕</button>`}</span></div>`).join("")}</div>` : `<div class="empty">Is mahine koi kharcha nahi likha.</div>`}</div>`,
+    bind() {
+      $("#expM").onchange = (e) => { expMonth = e.target.value || today().slice(0, 7); render(); };
+      document.querySelectorAll("[data-del-exp]").forEach((b) => (b.onclick = async () => { confirmKey = null; await store.del("expenses", b.dataset.delExp); toast("Kharcha delete ho gaya"); render(); }));
+    },
+  };
+};
+V.expenseForm = () => ({
+  title: "Naya kharcha",
+  html: `<form class="card" id="xf">
+    <label class="f">Kis cheez ka<select id="xCat">${EXP_CATS.map((c) => `<option>${c}</option>`).join("")}</select></label>
+    <label class="f">Rakam ₹<input id="xAmt" type="number" min="0.01" step="any" required inputmode="decimal"></label>
+    <div class="grid2"><label class="f">Date<input id="xDate" type="date" value="${today()}"></label>
+    <label class="f">Payment<select id="xMode"><option>Cash</option><option>UPI</option><option>Bank</option></select></label></div>
+    <label class="f">Detail (optional)<input id="xNote" maxlength="120"></label>
+    <button class="btn block red" type="submit">Save karo</button></form>`,
+  bind() {
+    $("#xf").onsubmit = async (e) => {
+      e.preventDefault();
+      const amt = r2(numv("xAmt")); if (!(amt > 0)) return toast("Rakam likho");
+      try { await store.put("expenses", { id: "x" + uid(), category: val("xCat"), amount: amt, date: val("xDate") || today(), mode: val("xMode"), note: val("xNote"), created: Date.now() }); toast("Kharcha save ho gaya"); back(); }
+      catch (err) { toast("Save nahi hua"); }
+    };
+  },
+});
+
+// ---------- REPORTS ----------
+let rep = { from: monthStart(), to: today() };
+V.reports = () => {
+  const { from, to } = rep;
+  const B = D.bills.filter((b) => inRange(b.date, from, to));
+  const sales = B.filter((b) => b.type === "sale"), purch = B.filter((b) => b.type === "purchase");
+  const tot = (arr) => r2(arr.reduce((s, b) => s + billCalc(b).total, 0));
+  const saleT = tot(sales), purT = tot(purch);
+  const gstOut = r2(sales.reduce((s, b) => s + billCalc(b).gst, 0)), gstIn = r2(purch.reduce((s, b) => s + billCalc(b).gst, 0));
+  const disc = r2(sales.reduce((s, b) => s + (b.discount || 0), 0));
+  const saleNet = r2(sales.reduce((s, b) => s + billCalc(b).sub, 0) - disc);
+  const cogs = r2(sales.reduce((s, b) => s + b.lines.reduce((x, l) => x + l.qty * (l.cost || 0), 0), 0));
+  const noCost = sales.some((b) => b.lines.some((l) => !l.cost));
+  const exp = r2(D.expenses.filter((e) => inRange(e.date, from, to)).reduce((s, e) => s + e.amount, 0));
+  const gross = r2(saleNet - cogs), net = r2(gross - exp);
+  const recd = r2(D.entries.filter((e) => e.kind === "got" && inRange(e.date, from, to) && party(e.partyId)?.type === "customer").reduce((s, e) => s + e.amount, 0)) + r2(sales.filter((b) => !b.partyId).reduce((s, b) => s + b.paid, 0));
+  const topItems = {}; sales.forEach((b) => b.lines.forEach((l) => (topItems[l.name] = r2((topItems[l.name] || 0) + l.qty * l.rate))));
+  const top = Object.entries(topItems).sort((a, b) => b[1] - a[1]).slice(0, 6); const tmax = Math.max(1, ...top.map((t) => t[1]));
+  const set = (f, t) => `data-rf="${f}" data-rt="${t}"`;
+  const lm = (() => { const d = new Date(); d.setDate(0); const e = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; return [e.slice(0, 8) + "01", e]; })();
+  const fy = (() => { const d = new Date(), y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return [`${y}-04-01`, `${y + 1}-03-31`]; })();
+  return {
+    title: "Report",
+    html: `
+    <div class="card">
+      <div class="row"><button class="btn sm line" ${set(today(), today())}>Aaj</button><button class="btn sm line" ${set(monthStart(), today())}>Is mahine</button><button class="btn sm line" ${set(lm[0], lm[1])}>Pichhle mahine</button><button class="btn sm line" ${set(fy[0], fy[1])}>Is saal (Apr–Mar)</button></div>
+      <div class="grid2"><label class="f">Se<input type="date" id="rFrom" value="${from}"></label><label class="f">Tak<input type="date" id="rTo" value="${to}"></label></div>
+    </div>
+    <div class="grid2">
+      <div class="stat get"><span>Bikri (${sales.length} bill)</span><b>${money(saleT)}</b></div>
+      <div class="stat give"><span>Kharid (${purch.length} bill)</span><b>${money(purT)}</b></div>
+      <div class="stat give"><span>Kharcha</span><b>${money(exp)}</b></div>
+      <div class="stat ${net >= 0 ? "get" : "give"}"><span>Shuddh munafa</span><b>${money(net)}</b></div>
+    </div>
+    <div class="card"><header><h2>Munafa kaise bana</h2></header><div class="totals">
+      <div><span>Bikri (GST ke bina, discount ke baad)</span><span class="num">${money(saleNet)}</span></div>
+      <div><span>Bika hua maal ki kharid keemat</span><span class="num">−${money(cogs)}</span></div>
+      <div class="big"><span>Kul munafa (gross)</span><span class="num">${money(gross)}</span></div>
+      <div><span>Kharcha</span><span class="num">−${money(exp)}</span></div>
+      <div class="big"><span>Shuddh munafa (net)</span><span class="num ${net >= 0 ? "get" : "give"}">${money(net)}</span></div>
+    </div>${noCost ? `<p class="tiny muted">Kuch items ka kharid rate nahi tha, unka munafa poori bikri maan kar gina gaya. Saamaan mein kharid rate bharo.</p>` : ""}</div>
+    <div class="card"><header><h2>Paisa aur GST</h2></header><div class="totals">
+      <div><span>Customer se paisa aaya</span><span class="num">${money(recd)}</span></div>
+      <div><span>GST jo liya (bikri par)</span><span class="num">${money(gstOut)}</span></div>
+      <div><span>GST jo diya (kharid par)</span><span class="num">${money(gstIn)}</span></div>
+      <div class="big"><span>GST bharna hai (andaza)</span><span class="num">${money(Math.max(0, gstOut - gstIn))}</span></div>
+    </div></div>
+    ${top.length ? `<div class="card"><header><h2>Sabse zyada bikne wala saamaan</h2></header><div class="bars">${top.map(([n, v]) => `<div class="b"><span>${esc(n)}</span><div><i style="width:${(v / tmax) * 100}%"></i></div><span>${money(v)}</span></div>`).join("")}</div></div>` : ""}
+    <div class="card"><header><h2>Excel (CSV) download</h2></header><div class="row">
+      <button class="btn sm ghost" data-csv="bills">Bills</button><button class="btn sm ghost" data-csv="parties">Party baaki</button><button class="btn sm ghost" data-csv="items">Stock</button><button class="btn sm ghost" data-csv="expenses">Kharcha</button></div>
+      <p class="tiny muted">Bills aur kharcha upar chuni tareekh ke hisaab se.</p></div>`,
+    bind() {
+      document.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = () => { rep = { from: b.dataset.rf, to: b.dataset.rt }; render(); }));
+      $("#rFrom").onchange = (e) => { rep.from = e.target.value; render(); };
+      $("#rTo").onchange = (e) => { rep.to = e.target.value; render(); };
+      document.querySelectorAll("[data-csv]").forEach((b) => (b.onclick = () => {
+        const k = b.dataset.csv, tag = `${from}_to_${to}`;
+        if (k === "bills") saveFile(`bills-${tag}.csv`, toCsv(["Date", "Type", "Bill No", "Party", "Items", "Saamaan", "GST", "Discount", "Total", "Paid", "Baaki", "Payment"],
+          B.slice().sort(byDate).map((x) => { const c = billCalc(x); return [dmy(x.date), x.type === "sale" ? "Sale" : "Purchase", x.no, party(x.partyId)?.name || "Cash", x.lines.map((l) => `${l.name} x${l.qty}@${l.rate}`).join("; "), c.sub, c.gst, x.discount || 0, c.total, x.paid, r2(c.total - x.paid), x.payMode]; })));
+        if (k === "parties") saveFile(`party-baaki-${today()}.csv`, toCsv(["Naam", "Type", "Phone", "Lena hai", "Dena hai"], D.parties.map((p) => { const bl = balance(p.id); return [p.name, p.type === "customer" ? "Customer" : "Supplier", p.phone || "", bl > 0 ? bl : 0, bl < 0 ? -bl : 0]; })));
+        if (k === "items") saveFile(`stock-${today()}.csv`, toCsv(["Saamaan", "Unit", "Stock", "Bikri rate", "Kharid rate", "GST %", "Stock ki keemat"], D.items.map((i) => [i.name, i.unit, i.stock, i.salePrice ?? "", i.buyPrice ?? "", i.gst || 0, r2((i.stock || 0) * (i.buyPrice || 0))])));
+        if (k === "expenses") saveFile(`kharcha-${tag}.csv`, toCsv(["Date", "Category", "Rakam", "Payment", "Detail"], D.expenses.filter((e) => inRange(e.date, from, to)).sort(byDate).map((e) => [dmy(e.date), e.category, e.amount, e.mode || "", e.note || ""])));
+      }));
+    },
+  };
+};
+
+// ---------- SETTINGS ----------
+V.settings = () => {
+  const s = D.settings;
+  return {
+    title: "Dukaan ki details",
+    html: `<form class="card" id="sf">
+      <label class="f">Dukaan / business ka naam<input id="sBiz" maxlength="80" value="${esc(s.bizName)}" placeholder="Jaise: Gupta General Store"></label>
+      <div class="grid2"><label class="f">Phone<input id="sPhone" maxlength="15" inputmode="tel" value="${esc(s.phone)}"></label>
+      <label class="f">GSTIN (optional)<input id="sGst" maxlength="20" value="${esc(s.gstin)}"></label></div>
+      <label class="f">Pata<input id="sAddr" maxlength="150" value="${esc(s.address)}"></label>
+      <label class="f">UPI ID (reminder aur bill mein dikhega)<input id="sUpi" maxlength="60" value="${esc(s.upi)}" placeholder="jaise: 98xxxxxx10@upi"></label>
+      <button class="btn block" type="submit">Save karo</button></form>
+    <div class="card"><header><h2>Backup</h2></header>
+      <p class="small muted">${mode === "db" ? "Data online save hota hai. Phir bhi kabhi-kabhi backup file rakh lo." : "Data sirf is phone/browser mein hai. Hafte mein ek baar backup file WhatsApp/Drive par bhej kar rakho."}</p>
+      <div class="row"><button class="btn sm ghost" id="bkOut">Backup file banao</button>
+      <label class="btn sm line">Backup se wapas laao<input type="file" id="bkIn" accept=".json,application/json" hidden></label></div>
+      <div id="bkMsg"></div></div>`,
+    bind() {
+      $("#sf").onsubmit = async (e) => { e.preventDefault(); try { await store.settings({ bizName: val("sBiz"), phone: val("sPhone"), gstin: val("sGst"), address: val("sAddr"), upi: val("sUpi") }); toast("Details save ho gayi"); back(); } catch (err) { toast("Save nahi hua"); } };
+      $("#bkOut").onclick = () => { const o = { app: "dukaan-khata", v: 1, at: new Date().toISOString(), settings: D.settings }; COLS.forEach((c) => (o[c] = D[c])); saveFile(`dukaan-khata-backup-${today()}.json`, JSON.stringify(o)); };
+      $("#bkIn").onchange = async (e) => {
+        const f = e.target.files[0]; if (!f) return;
+        try {
+          const o = JSON.parse(await f.text());
+          if (o.app !== "dukaan-khata") throw new Error("bad");
+          $("#bkMsg").innerHTML = `<div class="confirm">Backup (${(o.bills || []).length} bills, ${(o.parties || []).length} party) se wapas laayein? Jo entries same hain unke upar likh jayega. <button class="btn sm red" id="bkYes">Haan</button></div>`;
+          $("#bkYes").onclick = async () => {
+            $("#bkMsg").innerHTML = '<p class="small">Wapas la raha hai…</p>';
+            if (o.settings) await store.settings({ ...D.settings, ...o.settings });
+            for (const c of COLS) for (const doc of o[c] || []) if (doc && doc.id) await store.put(c, doc);
+            if (!db) { localLoad(); }
+            toast("Backup wapas aa gaya ✓"); render();
+          };
+        } catch (err) { $("#bkMsg").innerHTML = `<div class="banner err">Ye Dukaan Khata ki backup file nahi lagti.</div>`; }
+        e.target.value = "";
+      };
+    },
+  };
+};
+
+// ================= global clicks =================
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-go],[data-open-party],[data-open-bill],[data-open-item],[data-ask]");
+  if (!t) return;
+  const ds = t.dataset;
+  if (ds.ask !== undefined) { confirmKey = ds.ask || null; render(); return; }
+  if (ds.openParty) return go("party", { id: ds.openParty });
+  if (ds.openBill) return go("bill", { id: ds.openBill });
+  if (ds.openItem) return go("item", { id: ds.openItem });
+  if (ds.go) {
+    e.preventDefault();
+    if (ds.go === "billForm") { draft = null; return go("billForm", ds.edit ? { editId: ds.edit } : { type: ds.type, pid: ds.pid }); }
+    if (ds.go === "partyForm") return go("partyForm", { id: ds.pid, ptype: ds.ptype });
+    if (ds.go === "itemForm") return go("itemForm", { id: ds.iid });
+    if (ds.go === "entryForm") return go("entryForm", { pid: ds.pid, kind: ds.kind });
+    return go(ds.go, {});
+  }
+});
+
+init();
+})();
+</script>

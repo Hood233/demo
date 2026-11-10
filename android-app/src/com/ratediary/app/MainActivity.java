@@ -2,6 +2,7 @@ package com.ratediary.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
@@ -10,7 +11,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-/** Rate Diary: the web page from assets/index.html in a full-screen WebView. Data stays in the phone (localStorage). */
+/** Shared shell for Rate Diary and Dukaan Khata: the web page from assets/index.html in a full-screen WebView. Data stays in the phone (localStorage). */
 public class MainActivity extends Activity {
     private WebView web;
 
@@ -24,7 +25,15 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setAllowFileAccess(true);
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new WebViewClient() {
+            // WhatsApp / phone / web links open in their own apps, the app page stays here
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("file:")) return false;
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception e) { /* no app for this link */ }
+                return true;
+            }
+        });
         web.setWebChromeClient(new WebChromeClient());
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
         setContentView(web);

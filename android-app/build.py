@@ -3,7 +3,18 @@
 dx for dex, apksig (Sign.java) for v1+v2 signing. Run from this folder: python3 build.py"""
 import struct, zipfile, shutil, subprocess, os, sys
 
-PKG, LABEL, VCODE, VNAME = "com.ratediary.app", "Rate Diary", 2, "1.1"
+import argparse
+ap = argparse.ArgumentParser()
+ap.add_argument("--page", default="../supplier-rates/index.html")
+ap.add_argument("--pkg", default="com.ratediary.app")
+ap.add_argument("--label", default="Rate Diary")
+ap.add_argument("--icon", default="icon.png")
+ap.add_argument("--out", default="RateDiary.apk")
+ap.add_argument("--key", default="release.p12")
+ap.add_argument("--vcode", type=int, default=2)
+ap.add_argument("--vname", default="1.1")
+ARGS = ap.parse_args()
+PKG, LABEL, VCODE, VNAME = ARGS.pkg, ARGS.label, ARGS.vcode, ARGS.vname
 MIN_SDK, TARGET_SDK = 24, 34
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 TOOLS = os.environ.get("TOOLS", "/home/user/apkbuild/tools")
@@ -72,7 +83,7 @@ A = True
 manifest = ("manifest", [(None, "package", T_STR, PKG), (A, "versionCode", T_DEC, VCODE), (A, "versionName", T_STR, VNAME)], [
     ("uses-sdk", [(A, "minSdkVersion", T_DEC, MIN_SDK), (A, "targetSdkVersion", T_DEC, TARGET_SDK)], []),
     ("application", [(A, "label", T_STR, LABEL), (A, "icon", T_REF, 0x7f010000), (A, "allowBackup", T_BOOL, True), (A, "hardwareAccelerated", T_BOOL, True)], [
-        ("activity", [(A, "name", T_STR, PKG + ".MainActivity"), (A, "exported", T_BOOL, True),
+        ("activity", [(A, "name", T_STR, "com.ratediary.app.MainActivity"), (A, "exported", T_BOOL, True),
                       (A, "configChanges", T_HEX, 0x04a0), (A, "windowSoftInputMode", T_HEX, 0x10)], [
             ("intent-filter", [], [
                 ("action", [(A, "name", T_STR, "android.intent.action.MAIN")], []),
@@ -111,8 +122,8 @@ def main():
     files = [("AndroidManifest.xml", axml(manifest), zipfile.ZIP_DEFLATED),
              ("resources.arsc", arsc(), zipfile.ZIP_STORED),
              ("classes.dex", open(OUT + "/classes.dex", "rb").read(), zipfile.ZIP_DEFLATED),
-             ("res/mipmap/ic_launcher.png", open("icon.png", "rb").read(), zipfile.ZIP_STORED),
-             ("assets/index.html", open("../supplier-rates/index.html", "rb").read(), zipfile.ZIP_DEFLATED)]
+             ("res/mipmap/ic_launcher.png", open(ARGS.icon, "rb").read(), zipfile.ZIP_STORED),
+             ("assets/index.html", open(ARGS.page, "rb").read(), zipfile.ZIP_DEFLATED)]
     unsigned = OUT + "/unsigned.apk"
     with open(unsigned, "wb") as fh:
         z = zipfile.ZipFile(fh, "w")
@@ -123,12 +134,12 @@ def main():
                 zi.extra = b"\0" * ((4 - off % 4) % 4)
             z.writestr(zi, data)
         z.close()
-    if not os.path.exists("release.p12"):
-        run(["keytool", "-genkeypair", "-keystore", "release.p12", "-storetype", "PKCS12", "-storepass", "ratediary", "-keypass", "ratediary",
-             "-alias", "ratediary", "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000", "-dname", "CN=Rate Diary, O=Rate Diary, C=IN"])
+    if not os.path.exists(ARGS.key):
+        run(["keytool", "-genkeypair", "-keystore", ARGS.key, "-storetype", "PKCS12", "-storepass", "ratediary", "-keypass", "ratediary",
+             "-alias", "ratediary", "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000", "-dname", "CN=" + LABEL + ", O=" + LABEL + ", C=IN"])
     run(["javac", "-nowarn", "-cp", TOOLS + "/apksig.jar", "-d", OUT, "Sign.java"])
-    run(["java", "--add-exports", "java.base/sun.security.x509=ALL-UNNAMED", "--add-exports", "java.base/sun.security.pkcs=ALL-UNNAMED", "--add-exports", "java.base/sun.security.util=ALL-UNNAMED", "-cp", OUT + ":" + TOOLS + "/apksig.jar", "Sign", "release.p12", "ratediary", "ratediary", unsigned, "RateDiary.apk"])
-    print("APK:", os.path.abspath("RateDiary.apk"), os.path.getsize("RateDiary.apk"), "bytes")
+    run(["java", "--add-exports", "java.base/sun.security.x509=ALL-UNNAMED", "--add-exports", "java.base/sun.security.pkcs=ALL-UNNAMED", "--add-exports", "java.base/sun.security.util=ALL-UNNAMED", "-cp", OUT + ":" + TOOLS + "/apksig.jar", "Sign", ARGS.key, "ratediary", "ratediary", unsigned, ARGS.out])
+    print("APK:", os.path.abspath(ARGS.out), os.path.getsize(ARGS.out), "bytes")
 
 if __name__ == "__main__":
     main()

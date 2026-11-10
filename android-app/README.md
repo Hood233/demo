@@ -19,3 +19,9 @@ TOOLS=/path/to/tools python3 build.py
 ```
 App ka page `../supplier-rates/index.html` se liya jata hai. Update ke liye `build.py` mein `VCODE` badhao.
 `release.p12` (signing key) git mein nahi rakhi gayi. Naye build par nayi key banegi, aur naya APK purani app ke upar install nahi hoga: pehle data ka CSV backup lo, purani app uninstall karo, phir naya APK install karo.
+
+## Dukaan Khata APK
+```
+TOOLS=/path/to/tools python3 build.py --page ../dukaan-khata/index.html --pkg com.dukaankhata.app \
+  --label "Dukaan Khata" --icon ../dukaan-khata/icon.png --out ../dukaan-khata/DukaanKhata.apk --key dukaan.p12 --vcode 1 --vname 1.0
+```
