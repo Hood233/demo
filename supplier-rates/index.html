@@ -1,0 +1,831 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Rate Diary</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: a purchase ledger. A narrow column of ruled entry sheets with tabs on top;
+   rates are always set in a mono face so old and new figures line up like a register. */
+:root {
+  --paper: #f5f7fa;
+  --sheet: #ffffff;
+  --ink: #18202e;
+  --ink-soft: #5b6678;
+  --rule: #dfe4ec;
+  --rule-strong: #c4ccd8;
+  --accent: #2647c9;          /* ballpoint blue */
+  --accent-soft: #e6ebfb;
+  --up: #c2341f;              /* rate badha (mehenga) */
+  --up-soft: #fbe6e2;
+  --down: #17804a;            /* rate ghata (sasta) */
+  --down-soft: #ddf2e5;
+  --warn: #9a6a00;
+  --warn-soft: #fcf1d2;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #10141b; --sheet: #171d27; --ink: #e4e9f2; --ink-soft: #97a3b6; --rule: #262f3d; --rule-strong: #364254;
+    --accent: #8ea6ff; --accent-soft: #1f2a4d; --up: #ff8a75; --up-soft: #3b1d18; --down: #6fd59b; --down-soft: #15321f;
+    --warn: #f0c45c; --warn-soft: #362b10; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #10141b; --sheet: #171d27; --ink: #e4e9f2; --ink-soft: #97a3b6; --rule: #262f3d; --rule-strong: #364254;
+  --accent: #8ea6ff; --accent-soft: #1f2a4d; --up: #ff8a75; --up-soft: #3b1d18; --down: #6fd59b; --down-soft: #15321f;
+  --warn: #f0c45c; --warn-soft: #362b10; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.wrap { max-width: 920px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--ink-soft); }
+.small { font-size: .85rem; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 16px; padding-block: 20px 12px; }
+header.top .sub { color: var(--ink-soft); font-size: .9rem; max-width: 52ch; }
+.mode { font-size: .78rem; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.mode.local { background: var(--warn-soft); color: var(--warn); }
+
+nav.tabs {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper);
+  display: flex; gap: 4px; overflow-x: auto; border-bottom: 2px solid var(--rule-strong); margin-bottom: 16px; scrollbar-width: none;
+}
+nav.tabs a {
+  flex: none; padding: 10px 14px; text-decoration: none; color: var(--ink-soft); font-weight: 600; font-size: .92rem;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap;
+}
+nav.tabs a.on { color: var(--accent); border-bottom-color: var(--accent); }
+nav.tabs a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.view { display: grid; gap: 16px; }
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.sheet > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.row > * { min-width: 0; }
+label.f { display: grid; gap: 4px; font-size: .8rem; color: var(--ink-soft); font-weight: 500; flex: 1 1 160px; }
+input, select, textarea {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule-strong); border-radius: 7px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+textarea { resize: vertical; min-height: 140px; line-height: 1.55; }
+button { font: inherit; cursor: pointer; }
+.btn { border: 0; background: var(--accent); color: var(--sheet); font-weight: 600; padding: 9px 16px; border-radius: 8px; white-space: nowrap; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.ghost { background: var(--accent-soft); color: var(--accent); }
+.btn.plain { background: none; color: var(--ink-soft); border: 1px solid var(--rule-strong); }
+.btn.danger { background: var(--up); color: var(--sheet); }
+.btn.sm { padding: 5px 10px; font-size: .85rem; }
+.linkish { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 600; }
+.file-drop { border: 1.5px dashed var(--rule-strong); border-radius: 8px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: .88rem; color: var(--ink-soft); }
+.file-drop img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--rule); }
+
+.banner { padding: 10px 14px; border-radius: 8px; font-size: .9rem; background: var(--warn-soft); color: var(--warn); }
+.banner.err { background: var(--up-soft); color: var(--up); }
+.banner.ok { background: var(--down-soft); color: var(--down); }
+
+.tbl-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--rule-strong); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+td.r, th.r { text-align: right; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--accent-soft); }
+.edit td { padding: 4px; }
+.edit input { padding: 6px 8px; }
+.edit .w-name { min-width: 170px; } .edit .w-unit { width: 84px; } .edit .w-qty { width: 70px; } .edit .w-rate { width: 96px; text-align: right; }
+.x { background: none; border: 0; color: var(--ink-soft); font-size: 1.1rem; padding: 4px 6px; }
+.x:hover { color: var(--up); }
+
+.chg { display: inline-block; font-family: var(--f-num); font-size: .8rem; font-weight: 600; padding: 1px 7px; border-radius: 5px; white-space: nowrap; }
+.chg.up { background: var(--up-soft); color: var(--up); }
+.chg.down { background: var(--down-soft); color: var(--down); }
+.chg.same { background: var(--rule); color: var(--ink-soft); }
+.chg.new { background: var(--accent-soft); color: var(--accent); }
+.prev { font-size: .8rem; color: var(--ink-soft); line-height: 1.35; }
+.prev b { color: var(--ink); font-family: var(--f-num); font-weight: 600; }
+.flag { color: var(--warn); font-size: .78rem; font-weight: 600; }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.summary div { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; }
+.summary b { display: block; font-family: var(--f-num); font-size: 1.2rem; }
+.summary span { font-size: .78rem; color: var(--ink-soft); }
+
+.qlist { display: grid; gap: 8px; }
+.qcard { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; background: var(--sheet); text-align: left; color: var(--ink); width: 100%; }
+.qcard:hover { border-color: var(--accent); }
+.qcard .date { font-family: var(--f-num); font-size: .85rem; color: var(--ink-soft); }
+.empty { padding: 20px 4px; color: var(--ink-soft); display: grid; gap: 8px; justify-items: start; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-soft); font-size: .92rem; }
+
+.spark { width: 100%; max-width: 100%; height: auto; display: block; }
+.spark .ln { fill: none; stroke: var(--accent); stroke-width: 2; }
+.spark .pt { fill: var(--accent); }
+.spark text { fill: var(--ink-soft); font-family: var(--f-num); font-size: 10px; }
+.spark .grid { stroke: var(--rule); }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 9px 16px; border-radius: 99px; font-size: .9rem; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sp .7s linear infinite; vertical-align: -2px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s; } .toast { transition: none; } }
+@media (max-width: 560px) { h1 { font-size: 1.4rem; } .sheet { padding: 14px; } .tbl-wrap { margin: 0 -14px; padding: 0 14px; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rate Diary</h1>
+      <p class="sub">Supplier ki rate list yahan save karo. Agli baar list aaye to purana rate turant saamne.</p>
+    </div>
+    <span class="mode" id="modeTag">Load ho raha hai…</span>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <a href="#nayi" data-v="nayi">Nayi rate list</a>
+    <a href="#check" data-v="check">Purana rate dekho</a>
+    <a href="#saamaan" data-v="saamaan">Saamaan</a>
+    <a href="#lists" data-v="lists">Saari rate lists</a>
+  </nav>
+
+  <div id="globalBanner"></div>
+
+  <!-- NAYI RATE LIST -->
+  <section class="view" id="v-nayi">
+    <div class="sheet">
+      <header><h2 id="qFormTitle">Supplier ne rate bheje? Yahan daalo</h2><button class="linkish small" id="cancelEdit" hidden>Edit band karo</button></header>
+      <div class="row">
+        <label class="f">Supplier
+          <select id="qSupplier"></select>
+        </label>
+        <label class="f" id="newSupWrap" hidden>Naye supplier ka naam
+          <input id="newSupName" maxlength="60" placeholder="Jaise: Sharma Stationers">
+        </label>
+        <label class="f" style="flex:0 1 170px">Tareekh
+          <input type="date" id="qDate">
+        </label>
+      </div>
+      <label class="f">Rate list paste karo (WhatsApp message, bill ka text – jaisa bhi ho)
+        <textarea id="qText" placeholder="A4 paper JK 75gsm – 285/ream&#10;Cello Gripper pen blue @ 5 pcs&#10;Register 200 page ₹65&#10;Fevicol 50g - 22"></textarea>
+      </label>
+      <div class="file-drop" id="photoBox" hidden>
+        <span>📷 Ya rate list ki photo daalo:</span>
+        <input type="file" id="qPhoto" accept="image/*" multiple style="width:auto;flex:1 1 200px;border:0;background:none;padding:0">
+        <div id="photoPrev" class="row"></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="parseBtn">Items nikalo</button>
+        <button class="btn plain" id="manualBtn">Khud likhna hai</button>
+        <button class="linkish small" id="exampleBtn">Example list se try karo</button>
+        <span class="small muted" id="parseHint"></span>
+      </div>
+    </div>
+
+    <div class="sheet" id="reviewSheet" hidden>
+      <header>
+        <h2>Check karo aur save karo</h2>
+        <span class="small muted">Har item ke saath pichhla rate aur kitna badla dikh raha hai</span>
+      </header>
+      <div class="summary" id="reviewSummary"></div>
+      <div class="tbl-wrap">
+        <table class="edit">
+          <thead><tr><th>Item</th><th>Unit</th><th>Qty</th><th class="r">Naya rate ₹</th><th>Pichhla rate</th><th class="r">Badlav</th><th></th></tr></thead>
+          <tbody id="reviewBody"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button class="btn ghost sm" id="addRow">+ Item jodo</button>
+      </div>
+      <label class="f">Note (optional)<input id="qNote" maxlength="200" placeholder="Jaise: GST alag, delivery free"></label>
+      <div class="row">
+        <button class="btn" id="saveQuote">Rate list save karo</button>
+        <span class="small muted" id="saveHint"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PURANA RATE DEKHO -->
+  <section class="view" id="v-check" hidden>
+    <div class="sheet">
+      <header><h2>Nayi list bhejne se pehle purane rate dekho</h2></header>
+      <p class="small muted">Jo saamaan mangwana hai uski list daalo (ek line mein ek item, quantity bhi likh sakte ho). Har item ka pichhla rate, kis supplier ne diya aur sabse sasta kaun tha – sab dikhega.</p>
+      <label class="f">Meri list
+        <textarea id="cText" placeholder="A4 paper 10 ream&#10;Blue pen 100&#10;Register 200 page 20&#10;Stapler pin"></textarea>
+      </label>
+      <div class="row">
+        <button class="btn" id="checkBtn">Purane rate dikhao</button>
+        <button class="btn ghost" id="aiMatchBtn" hidden>AI se naam milao</button>
+        <span class="small muted" id="checkHint"></span>
+      </div>
+    </div>
+    <div class="sheet" id="checkResult" hidden>
+      <header><h2>Pichhle rate</h2><span class="small muted" id="checkCount"></span></header>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Item</th><th class="r">Qty</th><th>Aakhri rate</th><th>Sabse sasta</th><th class="r">Andaza ₹</th></tr></thead>
+          <tbody id="checkBody"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button class="btn ghost sm" id="copyWithRates">Copy: list + pichhle rate</button>
+        <button class="btn plain sm" id="copyPlain">Copy: sirf list (supplier ko bhejne ke liye)</button>
+      </div>
+      <textarea id="copyFallback" readonly hidden style="min-height:120px"></textarea>
+    </div>
+  </section>
+
+  <!-- SAAMAAN -->
+  <section class="view" id="v-saamaan" hidden>
+    <div class="sheet">
+      <header><h2>Saara saamaan aur unke rate</h2><span class="small muted" id="itemCount"></span></header>
+      <input id="itemSearch" placeholder="Item dhundo… (jaise pen, register, A4)" autocomplete="off">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Aakhri rate</th><th>Pehle se badlav</th><th>Sabse kam</th><th class="r">Kitni baar</th></tr></thead>
+          <tbody id="itemBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sheet" id="itemDetail" hidden></div>
+  </section>
+
+  <!-- SAARI LISTS -->
+  <section class="view" id="v-lists" hidden>
+    <div class="sheet">
+      <header>
+        <h2>Saari rate lists</h2>
+        <div class="row"><button class="btn plain sm" id="exportCsv">Excel (CSV) download</button></div>
+      </header>
+      <div class="row">
+        <label class="f">Supplier<select id="lSupplier"></select></label>
+      </div>
+      <div class="qlist" id="quoteList"></div>
+    </div>
+    <div class="sheet" id="quoteDetail" hidden></div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+  const money = (n) => (n == null || isNaN(n) ? "–" : "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
+  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600); }
+
+  // ---------------- State + storage ----------------
+  const S = { suppliers: [], quotes: [], ready: false, mode: "loading" };
+  let db = null, sample = null, downloads = null, imagesOK = false;
+  const LKEY = "rateDiary.v1";
+
+  const store = {
+    async putSupplier(s) {
+      if (db) return db.collection("suppliers").doc(s.id).set(s);
+      S.suppliers.push(s); localSave();
+    },
+    async putQuote(q) {
+      if (db) return db.collection("quotes").doc(q.id).set(q);
+      const i = S.quotes.findIndex((x) => x.id === q.id);
+      if (i >= 0) S.quotes[i] = q; else S.quotes.push(q);
+      localSave();
+    },
+    async delQuote(id) {
+      if (db) return db.collection("quotes").doc(id).delete();
+      S.quotes = S.quotes.filter((q) => q.id !== id); localSave();
+    },
+  };
+  function localLoad() {
+    try { const d = JSON.parse(localStorage.getItem(LKEY)); if (d) { S.suppliers = d.suppliers || []; S.quotes = d.quotes || []; } } catch (e) { /* storage off */ }
+  }
+  function localSave() {
+    try { localStorage.setItem(LKEY, JSON.stringify({ suppliers: S.suppliers, quotes: S.quotes })); }
+    catch (e) { banner("Is browser mein save nahi ho paya. Private window band karke try karo.", "err"); }
+    renderAll();
+  }
+  function banner(msg, kind = "") { $("#globalBanner").innerHTML = msg ? `<div class="banner ${kind}">${msg}</div>` : ""; }
+
+  function useLocal(reason) {
+    S.mode = "local"; localLoad(); S.ready = true;
+    $("#modeTag").textContent = "Sirf is browser mein save"; $("#modeTag").className = "mode local";
+    if (reason) banner(reason);
+    renderAll();
+  }
+
+  async function init() {
+    $("#qDate").value = today();
+    route();
+    if (!window.claude || typeof window.claude.use !== "function") { useLocal(); return; }
+    const guard = setTimeout(() => { if (!S.ready) useLocal("Online storage se jawab nahi aaya, isliye data abhi sirf is browser mein save hoga."); }, 10000);
+    const [d, s, dl] = await Promise.all([claude.use("db"), claude.use("sample"), claude.use("downloads")]);
+    sample = s; downloads = dl;
+    if (sample) {
+      try { const lim = await sample.limits(); imagesOK = !!lim.images; } catch (e) { imagesOK = false; }
+    }
+    $("#photoBox").hidden = !imagesOK;
+    $("#aiMatchBtn").hidden = !sample;
+    $("#parseHint").textContent = sample ? "AI se padhega – Hindi/Hinglish bhi chalega" : "";
+    if (!d) { clearTimeout(guard); if (!S.ready) useLocal("Login nahi hai ya online storage band hai – data abhi sirf is browser mein save hoga."); return; }
+    if (S.ready) return; // guard already fell back
+    db = d;
+    let got = 0;
+    const done = () => { if (++got === 2) { clearTimeout(guard); S.ready = true; S.mode = "db"; $("#modeTag").textContent = "Online save ho raha hai"; $("#modeTag").className = "mode"; renderAll(); } };
+    const fail = (e) => { clearTimeout(guard); banner("Data load nahi hua (" + esc(e.code) + "). Page dobara kholo.", "err"); };
+    let f1 = false, f2 = false;
+    db.collection("suppliers").onSnapshot((snap) => { S.suppliers = snap.docs.map((x) => x.data()); if (!f1) { f1 = true; done(); } else renderAll(); }, fail);
+    db.collection("quotes").onSnapshot((snap) => { S.quotes = snap.docs.map((x) => x.data()); if (!f2) { f2 = true; done(); } else renderAll(); }, fail);
+  }
+
+  // ---------------- Item names: normalise + match ----------------
+  const STOP = new Set(["the", "of", "and", "for", "ka", "ki", "ke", "wala", "wali", "rs", "inr", "per", "each"]);
+  function normTokens(name) {
+    return String(name).toLowerCase().replace(/&/g, " and ")
+      .replace(/\bno\.?\s*(\d)/g, "no$1")
+      .replace(/(\d)\s*(gsm|gms|gm|g|kg|ml|ltr|l|mm|cm|pages|page|pgs|pg|pcs|pc)\b/g, (m, d, u) => d + ({ gms: "g", gm: "g", pages: "pg", page: "pg", pgs: "pg", ltr: "l", pc: "pcs" }[u] || u)).replace(/[^a-z0-9ऀ-ॿ]+/g, " ").trim().split(/\s+/)
+      .filter((t) => t && !STOP.has(t)).map((t) => (t.length > 3 && /[a-z]s$/.test(t) && !/ss$/.test(t) ? t.slice(0, -1) : t));
+  }
+  const keyOf = (name) => [...new Set(normTokens(name))].sort().join(" ");
+  function similarity(a, b) {
+    const A = new Set(a.split(" ")), B = new Set(b.split(" "));
+    if (!A.size || !B.size) return 0;
+    let inter = 0; A.forEach((t) => { if (B.has(t)) inter++; });
+    const jac = inter / (A.size + B.size - inter);
+    const bg = (s) => { const r = new Map(); const x = s.replace(/ /g, ""); for (let i = 0; i < x.length - 1; i++) { const k = x.slice(i, i + 2); r.set(k, (r.get(k) || 0) + 1); } return r; };
+    const ba = bg(a), bb = bg(b); let ov = 0, ta = 0, tb = 0;
+    ba.forEach((v, k) => { ta += v; ov += Math.min(v, bb.get(k) || 0); }); bb.forEach((v) => (tb += v));
+    const dice = ta + tb ? (2 * ov) / (ta + tb) : 0;
+    return 0.5 * jac + 0.5 * dice;
+  }
+
+  // Every saved rate, flat
+  function entries() {
+    const sup = Object.fromEntries(S.suppliers.map((s) => [s.id, s.name]));
+    return S.quotes.flatMap((q) => (q.items || []).map((it) => ({ ...it, date: q.date, supplierId: q.supplierId, supplier: sup[q.supplierId] || "?", quoteId: q.id, created: q.created || 0 })))
+      .sort((a, b) => (a.date === b.date ? a.created - b.created : a.date < b.date ? -1 : 1));
+  }
+  function catalog() {
+    const m = new Map();
+    for (const e of entries()) {
+      const c = m.get(e.key) || { key: e.key, name: e.name, hist: [] };
+      c.name = e.name; c.hist.push(e); m.set(e.key, c);
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  // loose = shopping-list lookup: "blue pen" may find "Cello Gripper Pen Blue"
+  function findMatch(name, cat, loose = false) {
+    const k = keyOf(name);
+    if (!k) return null;
+    const exact = cat.find((c) => c.key === k);
+    if (exact) return { c: exact, exact: true };
+    let best = null, bs = 0;
+    for (const c of cat) { const s = similarity(k, c.key); if (s > bs) { bs = s; best = c; } }
+    if (bs >= 0.72) return { c: best, exact: false, score: bs };
+    if (loose) {
+      const toks = k.split(" ");
+      const subs = cat.filter((c) => { const ck = new Set(c.key.split(" ")); return toks.every((t) => ck.has(t)); });
+      if (subs.length) { subs.sort((a, b) => similarity(k, b.key) - similarity(k, a.key)); return { c: subs[0], exact: false, many: subs.length }; }
+    }
+    return null;
+  }
+  // last rate for an item key before a quote (same supplier first, else anyone)
+  function previousFor(key, { supplierId, date, excludeQuote } = {}) {
+    const hist = entries().filter((e) => e.key === key && e.quoteId !== excludeQuote && (!date || e.date <= date));
+    if (!hist.length) return null;
+    const same = hist.filter((e) => e.supplierId === supplierId);
+    return { last: (same.length ? same : hist).at(-1), sameSupplier: same.length > 0, lowest: hist.reduce((a, b) => (b.rate < a.rate ? b : a)) };
+  }
+  function chgBadge(now, before) {
+    if (before == null || now == null || isNaN(now)) return '<span class="chg new">naya item</span>';
+    if (!before) return "";
+    const p = ((now - before) / before) * 100;
+    if (Math.abs(p) < 0.5) return '<span class="chg same">same</span>';
+    return `<span class="chg ${p > 0 ? "up" : "down"}">${p > 0 ? "▲" : "▼"} ${Math.abs(p).toFixed(p > -10 && p < 10 ? 1 : 0)}%</span>`;
+  }
+
+  // ---------------- Parsing ----------------
+  const UNITS = { pcs: "pcs", pc: "pcs", piece: "pcs", pieces: "pcs", nos: "pcs", no: "pcs", n: "pcs", dozen: "dozen", dz: "dozen", doz: "dozen", pkt: "packet", packet: "packet", pack: "packet", box: "box", ream: "ream", rim: "ream", kg: "kg", g: "g", gm: "g", gms: "g", ltr: "litre", l: "litre", litre: "litre", ml: "ml", set: "set", roll: "roll", bundle: "bundle", pad: "pad", book: "book", carton: "carton", ctn: "carton", mtr: "metre", m: "metre", sheet: "sheet", pair: "pair" };
+  function localParse(text) {
+    const out = [];
+    for (let raw of text.split(/\n+/)) {
+      let line = raw.replace(/[*_~`]/g, "").replace(/^\s*(\d{1,3}[.)]|[-•▪●>])\s*/, "").trim();
+      if (!line || !/\d/.test(line)) continue;
+      if (/^(total|grand total|gst|cgst|sgst|igst|net|amount|sub ?total|thanks|regards|ph|mob)/i.test(line)) continue;
+      const nums = [...line.matchAll(/(\d+(?:[.,]\d+)?)/g)];
+      let rate = null, rateIdx = -1, rateLen = 0;
+      const at = line.match(/(?:@|rate[:\s]|rs\.?|₹|inr)\s*(\d+(?:[.,]\d+)?)/i);
+      if (at) { rate = parseFloat(at[1].replace(",", ".")); rateIdx = at.index; rateLen = at[0].length; }
+      else if (nums.length) { const n = nums.at(-1); rate = parseFloat(n[1].replace(",", ".")); rateIdx = n.index; rateLen = n[0].length; }
+      if (rate == null) continue;
+      let after = line.slice(rateIdx + rateLen);
+      let unit = "";
+      const um = (after.match(/^\s*(?:\/-?)?\s*(?:\/|per\s+|each\s*)?\s*([a-z]+)/i) || [])[1];
+      if (um && UNITS[um.toLowerCase()]) unit = UNITS[um.toLowerCase()];
+      let name = line.slice(0, rateIdx).replace(/(rs\.?|₹|inr|rate|@|=|:|–|—|-|\/)\s*$/i, "").replace(/[\s:=–—-]+$/g, "").trim();
+      let qty = null;
+      const qm = name.match(/(\d+)\s*(pcs|pc|nos|dozen|dz|pkt|packet|box|ream|rim|set|roll|kg)\b\s*$/i) || name.match(/\b(?:x|×|qty)\s*(\d+)\s*$/i);
+      if (qm) { qty = Number(qm[1]); if (!unit && qm[2]) unit = UNITS[qm[2].toLowerCase()] || ""; name = name.slice(0, qm.index).replace(/[\s:=x×-]+$/i, "").trim(); }
+      if (!unit) { const un = name.match(/\b(?:per|\/)\s*([a-z]+)\s*$/i); if (un && UNITS[un[1].toLowerCase()]) { unit = UNITS[un[1].toLowerCase()]; name = name.slice(0, un.index).trim(); } }
+      if (!name || name.length < 2) continue;
+      out.push({ name, unit, qty, rate });
+    }
+    return out;
+  }
+
+  async function aiParse(text, images) {
+    const known = catalog().map((c) => c.name).slice(0, 400);
+    const prompt = `You read a supplier's rate list or quotation sent to a small Indian trading business (stationery and other goods). It may be in Hindi, Hinglish or English, copied from WhatsApp or a bill, or shown in the attached photo(s).
+
+Extract every product line with its rate. Reply with ONLY a JSON array. Each element:
+{"name": string, "unit": string, "qty": number or null, "rate": number, "match": string or null}
+
+Rules:
+- name: clean product name in English/Hinglish Latin letters, keep brand, size, colour, pages, gsm (e.g. "JK A4 Paper 75gsm", "Cello Gripper Pen Blue").
+- unit: the unit the rate is for: pcs, dozen, packet, box, ream, kg, set, roll, etc. Empty string if not stated.
+- rate: price in rupees for ONE unit. If only a quantity and a line total are given, divide total by quantity. Numbers only, no currency.
+- qty: quantity if the list states one, else null.
+- match: if this is the same product as a name in KNOWN ITEMS (same thing, size and brand; wording may differ), copy that known name exactly. Otherwise null.
+- Skip totals, GST/tax lines, greetings, addresses and phone numbers.
+
+KNOWN ITEMS:
+${known.length ? known.join("\n") : "(none yet)"}
+
+RATE LIST TEXT:
+${text || "(only photo attached)"}`;
+    const opts = { modelTier: "default" };
+    if (images && images.length) opts.images = images;
+    const res = await sample.json(prompt, opts);
+    if (!Array.isArray(res)) throw { code: "invalid_json", message: "AI ka jawab list nahi tha" };
+    return res.filter((r) => r && r.name && r.rate != null && !isNaN(Number(r.rate)))
+      .map((r) => ({ name: String(r.name).slice(0, 120), unit: String(r.unit || "").slice(0, 20), qty: r.qty == null || isNaN(Number(r.qty)) ? null : Number(r.qty), rate: Number(r.rate), match: r.match ? String(r.match) : null }));
+  }
+
+  // ---------------- New quote: review rows ----------------
+  let draft = [];       // [{name, unit, qty, rate, key, matchName, linked}]
+  let editingId = null;
+  let photos = [];
+
+  function supplierOptions(sel, withAll) {
+    const opts = S.suppliers.slice().sort((a, b) => a.name.localeCompare(b.name)).map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+    if (withAll) return `<option value="">Sabhi supplier</option>` + opts;
+    return (S.suppliers.length ? "" : "") + opts + `<option value="__new">+ Naya supplier jodo</option>`;
+  }
+  function renderSupplierSelects() {
+    const q = $("#qSupplier"), cur = q.value;
+    q.innerHTML = supplierOptions(cur, false);
+    if (cur && [...q.options].some((o) => o.value === cur)) q.value = cur;
+    else if (!S.suppliers.length) q.value = "__new";
+    $("#newSupWrap").hidden = q.value !== "__new";
+    const l = $("#lSupplier"), lc = l.value;
+    l.innerHTML = supplierOptions(lc, true); l.value = lc;
+  }
+
+  function linkDraftRow(r, cat) {
+    if (r.linked === false) { r.key = keyOf(r.name) + " #" + (r.split || (r.split = uid())); r.matchName = null; return; }
+    let m = null;
+    if (r.match) { const c = cat.find((x) => x.name.toLowerCase() === r.match.toLowerCase()); if (c) m = { c, exact: true }; }
+    if (!m) m = findMatch(r.name, cat);
+    if (m) { r.key = m.c.key; r.matchName = m.c.name; r.fuzzy = !m.exact; }
+    else { r.key = keyOf(r.name); r.matchName = null; r.fuzzy = false; }
+  }
+
+  function renderReview() {
+    const sheet = $("#reviewSheet");
+    sheet.hidden = !draft.length && !editingId;
+    if (sheet.hidden) return;
+    const cat = catalog();
+    const supId = $("#qSupplier").value;
+    const date = $("#qDate").value;
+    let up = 0, down = 0, fresh = 0, same = 0;
+    $("#reviewBody").innerHTML = draft.map((r, i) => {
+      linkDraftRow(r, cat);
+      const pv = previousFor(r.key, { supplierId: supId, date, excludeQuote: editingId });
+      const before = pv?.last.rate;
+      if (!pv) fresh++; else if (r.rate > before * 1.005) up++; else if (r.rate < before * 0.995) down++; else same++;
+      const unitFlag = pv && pv.last.unit && r.unit && pv.last.unit !== r.unit ? `<div class="flag">⚠ unit alag: pehle ${esc(pv.last.unit)}</div>` : "";
+      const prevHtml = pv
+        ? `<div class="prev"><b>${money(before)}</b>${pv.last.unit ? "/" + esc(pv.last.unit) : ""} · ${esc(pv.last.supplier)}${pv.sameSupplier ? "" : " (doosra supplier)"}<br>${fmtDate(pv.last.date)}${pv.lowest.rate < before ? ` · sabse kam ${money(pv.lowest.rate)} (${esc(pv.lowest.supplier)})` : ""}${r.fuzzy ? `<br>≈ "${esc(r.matchName)}" se milaya · <button class="linkish" data-unlink="${i}">ye alag item hai</button>` : ""}</div>${unitFlag}`
+        : `<div class="prev">Pehli baar${r.linked === false ? ` · <button class="linkish" data-relink="${i}">wapas milao</button>` : ""}</div>`;
+      return `<tr>
+        <td><input class="w-name" data-i="${i}" data-k="name" value="${esc(r.name)}" aria-label="Item naam"></td>
+        <td><input class="w-unit" data-i="${i}" data-k="unit" value="${esc(r.unit)}" list="unitList" aria-label="Unit"></td>
+        <td><input class="w-qty num" data-i="${i}" data-k="qty" type="number" min="0" step="any" value="${r.qty ?? ""}" aria-label="Qty"></td>
+        <td class="r"><input class="w-rate num" data-i="${i}" data-k="rate" type="number" min="0" step="any" value="${r.rate ?? ""}" aria-label="Rate"></td>
+        <td>${prevHtml}</td>
+        <td class="r">${pv ? chgBadge(r.rate, before) : '<span class="chg new">naya</span>'}</td>
+        <td><button class="x" data-del="${i}" title="Hatao" aria-label="Hatao">✕</button></td></tr>`;
+    }).join("") + `<datalist id="unitList">${[...new Set(Object.values(UNITS))].map((u) => `<option value="${u}">`).join("")}</datalist>`;
+    $("#reviewSummary").innerHTML = [[draft.length, "items"], [up, "mehenge hue ▲"], [down, "saste hue ▼"], [same, "same rate"], [fresh, "naye items"]]
+      .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+  }
+
+  $("#reviewBody").addEventListener("input", (e) => {
+    const { i, k } = e.target.dataset; if (i == null) return;
+    const r = draft[+i];
+    r[k] = k === "rate" || k === "qty" ? (e.target.value === "" ? null : Number(e.target.value)) : e.target.value;
+    if (k === "name") r.match = null;
+  });
+  $("#reviewBody").addEventListener("change", (e) => { if (e.target.dataset.i != null) renderReview(); });
+  $("#reviewBody").addEventListener("click", (e) => {
+    const t = e.target.dataset;
+    if (t.del != null) { draft.splice(+t.del, 1); renderReview(); }
+    if (t.unlink != null) { draft[+t.unlink].linked = false; renderReview(); }
+    if (t.relink != null) { draft[+t.relink].linked = true; draft[+t.relink].split = null; renderReview(); }
+  });
+  $("#addRow").onclick = () => { draft.push({ name: "", unit: "", qty: null, rate: null }); renderReview(); const ins = document.querySelectorAll("#reviewBody .w-name"); ins[ins.length - 1]?.focus(); };
+  $("#manualBtn").onclick = () => { if (!draft.length) draft.push({ name: "", unit: "", qty: null, rate: null }); renderReview(); $("#reviewSheet").scrollIntoView({ behavior: "smooth" }); };
+  $("#qSupplier").onchange = () => { $("#newSupWrap").hidden = $("#qSupplier").value !== "__new"; if ($("#qSupplier").value === "__new") $("#newSupName").focus(); renderReview(); };
+  $("#qDate").onchange = renderReview;
+  $("#exampleBtn").onclick = () => {
+    $("#qText").value = "Namaste ji, aaj ke rate:\n1. JK A4 paper 75gsm - 285/ream\n2. Cello Gripper pen blue @ 5 pcs\n3. Classmate register 200 pg ₹68\n4. Fevicol MR 50g - 24\n5. Kangaro stapler pin no.10 - 12/box\n6. Natraj pencil 10 pkt = 50 per pkt\nGST extra. Dhanyavaad";
+    toast("Example text daal diya – ab 'Items nikalo' dabao");
+  };
+
+  $("#qPhoto").onchange = (e) => {
+    photos = [...e.target.files].slice(0, 5);
+    $("#photoPrev").innerHTML = photos.map((f) => `<img alt="" src="${URL.createObjectURL(f)}">`).join("");
+  };
+
+  $("#parseBtn").onclick = async () => {
+    const text = $("#qText").value.trim();
+    if (!text && !photos.length) return toast("Pehle rate list paste karo ya photo daalo");
+    const btn = $("#parseBtn"), hint = $("#parseHint");
+    let rows = null;
+    if (sample) {
+      btn.disabled = true; hint.innerHTML = '<span class="spin"></span> AI rate list padh raha hai…';
+      try { rows = await aiParse(text, photos); hint.textContent = `AI ne ${rows.length} items nikale. Neeche check karo.`; }
+      catch (err) {
+        if (err && err.code === "not_granted") { sample = null; $("#aiMatchBtn").hidden = true; $("#photoBox").hidden = true; hint.textContent = "AI ki permission nahi mili – simple tareeke se padh raha hoon."; }
+        else if (err && err.code === "rate_limited") hint.textContent = "AI abhi busy hai, thodi der baad try karo. Abhi simple tareeke se padha.";
+        else hint.textContent = "AI se nahi ho paya – simple tareeke se padha. Galti ho to theek kar lo.";
+        rows = null;
+      } finally { btn.disabled = false; }
+    }
+    if (!rows) {
+      if (!text) return toast("Photo padhne ke liye AI chahiye – text paste karo");
+      rows = localParse(text);
+      if (!sample) hint.textContent = rows.length ? `${rows.length} items mile. Neeche check karo.` : "Koi rate nahi mila. 'Khud likhna hai' se daalo.";
+    }
+    draft = draft.filter((r) => r.name || r.rate != null).concat(rows);
+    renderReview();
+    if (rows.length) $("#reviewSheet").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  function resetForm() {
+    draft = []; editingId = null; photos = [];
+    $("#qText").value = ""; $("#qNote").value = ""; $("#qPhoto").value = ""; $("#photoPrev").innerHTML = ""; $("#parseHint").textContent = sample ? "AI se padhega – Hindi/Hinglish bhi chalega" : "";
+    $("#qDate").value = today(); $("#qFormTitle").textContent = "Supplier ne rate bheje? Yahan daalo"; $("#cancelEdit").hidden = true;
+    renderReview();
+  }
+  $("#cancelEdit").onclick = resetForm;
+
+  $("#saveQuote").onclick = async () => {
+    const hint = $("#saveHint");
+    let supId = $("#qSupplier").value;
+    const date = $("#qDate").value;
+    const items = draft.filter((r) => r.name.trim() && r.rate != null && !isNaN(r.rate));
+    if (!date) return (hint.textContent = "Tareekh daalo.");
+    if (!items.length) return (hint.textContent = "Kam se kam ek item naam aur rate ke saath chahiye.");
+    const btn = $("#saveQuote"); btn.disabled = true; hint.innerHTML = '<span class="spin"></span> Save ho raha hai…';
+    try {
+      if (supId === "__new" || !supId) {
+        const name = $("#newSupName").value.trim();
+        if (!name) { hint.textContent = "Supplier ka naam likho."; btn.disabled = false; return; }
+        const exist = S.suppliers.find((s) => s.name.toLowerCase() === name.toLowerCase());
+        if (exist) supId = exist.id;
+        else { const s = { id: "s" + uid(), name, created: Date.now() }; await store.putSupplier(s); supId = s.id; }
+      }
+      const cat = catalog();
+      items.forEach((r) => linkDraftRow(r, cat));
+      const old = editingId ? S.quotes.find((q) => q.id === editingId) : null;
+      const q = {
+        id: editingId || "q" + uid(), supplierId: supId, date, note: $("#qNote").value.trim(), created: old?.created || Date.now(),
+        items: items.map((r) => ({ name: r.name.trim(), unit: (r.unit || "").trim(), qty: r.qty ?? null, rate: Number(r.rate), key: r.key })),
+      };
+      await store.putQuote(q);
+      $("#qSupplier").value = supId; $("#newSupName").value = "";
+      hint.textContent = "";
+      toast(`${q.items.length} items ki rate list save ho gayi ✓`);
+      resetForm(); renderAll();
+      openQuote(q.id); location.hash = "lists";
+    } catch (err) {
+      hint.textContent = err?.code === "quota_exceeded" ? "Storage bhar gaya – purani lists delete karo." : err?.code === "not_granted" ? "Aapko is page par save karne ki permission nahi hai." : "Save nahi hua, dobara try karo.";
+    } finally { btn.disabled = false; }
+  };
+
+  // ---------------- Check old rates ----------------
+  let checkRows = [];
+  function parseNeedLine(line) {
+    let l = line.replace(/^\s*(\d{1,3}[.)]|[-•▪●>])\s*/, "").trim();
+    let qty = null;
+    const m = l.match(/[\s,:x×-]+(\d+(?:\.\d+)?)\s*(pcs|pc|nos|dozen|dz|pkt|packet|box|ream|rim|set|roll|kg)?\s*$/i);
+    if (m && !/(\d|\bno\.?)\s*$/i.test(l.slice(0, m.index))) { qty = Number(m[1]); l = l.slice(0, m.index).trim(); }
+    return { name: l, qty };
+  }
+  function renderCheck() {
+    const res = $("#checkResult");
+    res.hidden = !checkRows.length; if (!checkRows.length) return;
+    const cat = catalog();
+    let found = 0, total = 0;
+    $("#checkBody").innerHTML = checkRows.map((r) => {
+      const c = r.key ? cat.find((x) => x.key === r.key) : null;
+      if (!c) return `<tr><td>${esc(r.name)}</td><td class="r num">${r.qty ?? ""}</td><td colspan="3" class="muted small">Pehle kabhi rate nahi mila</td></tr>`;
+      found++;
+      const last = c.hist.at(-1), low = c.hist.reduce((a, b) => (b.rate < a.rate ? b : a));
+      const est = r.qty ? r.qty * last.rate : null; if (est) total += est;
+      return `<tr><td>${esc(r.name)}${keyOf(r.name) !== c.key ? `<div class="prev">≈ ${esc(c.name)}</div>` : ""}</td><td class="r num">${r.qty ?? ""}</td>
+        <td><div class="prev"><b>${money(last.rate)}</b>${last.unit ? "/" + esc(last.unit) : ""}<br>${esc(last.supplier)} · ${fmtDate(last.date)}</div></td>
+        <td><div class="prev"><b>${money(low.rate)}</b><br>${esc(low.supplier)} · ${fmtDate(low.date)}</div></td>
+        <td class="r num">${est ? money(est) : ""}</td></tr>`;
+    }).join("") + (total ? `<tr><td colspan="4"><b>Andazan total (pichhle rate se)</b></td><td class="r num"><b>${money(total)}</b></td></tr>` : "");
+    $("#checkCount").textContent = `${found}/${checkRows.length} items ka purana rate mila`;
+  }
+  $("#checkBtn").onclick = () => {
+    const lines = $("#cText").value.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+    if (!lines.length) return toast("Pehle list likho");
+    const cat = catalog();
+    checkRows = lines.map((l) => { const p = parseNeedLine(l); const m = findMatch(p.name, cat, true); return { ...p, key: m?.c.key || null }; });
+    renderCheck();
+    const miss = checkRows.filter((r) => !r.key).length;
+    $("#checkHint").textContent = !S.quotes.length ? "Abhi koi rate list save nahi hai – pehle 'Nayi rate list' mein daalo." : miss && sample ? `${miss} items nahi mile – "AI se naam milao" try karo.` : "";
+  };
+  $("#aiMatchBtn").onclick = async () => {
+    const miss = checkRows.filter((r) => !r.key);
+    if (!checkRows.length) return toast("Pehle 'Purane rate dikhao' dabao");
+    if (!miss.length) return toast("Sab items mil gaye");
+    const cat = catalog(); if (!cat.length) return toast("Abhi koi saved item nahi hai");
+    const btn = $("#aiMatchBtn"); btn.disabled = true; $("#checkHint").innerHTML = '<span class="spin"></span> AI naam mila raha hai…';
+    try {
+      const ans = await sample.json(`Match each WANTED line (a shopping list of a small Indian trading business, may be Hindi/Hinglish) to the same product in KNOWN ITEMS. Same product = same thing; ignore wording, spelling, Hindi words. If unsure or not present, use null.
+Reply with ONLY a JSON array of the same length as WANTED, each element the exact KNOWN ITEMS name or null.
+
+WANTED:
+${miss.map((r, i) => i + 1 + ". " + r.name).join("\n")}
+
+KNOWN ITEMS:
+${cat.map((c) => c.name).slice(0, 500).join("\n")}`, { modelTier: "quick" });
+      let n = 0;
+      if (Array.isArray(ans)) miss.forEach((r, i) => { const nm = ans[i]; const c = nm && cat.find((x) => x.name.toLowerCase() === String(nm).toLowerCase()); if (c) { r.key = c.key; n++; } });
+      $("#checkHint").textContent = `AI ne ${n} aur items milaye.`;
+      renderCheck();
+    } catch (err) { $("#checkHint").textContent = err?.code === "rate_limited" ? "AI abhi busy hai, thodi der baad." : "AI se milan nahi ho paya."; }
+    finally { btn.disabled = false; }
+  };
+  async function copyText(txt) {
+    const fb = $("#copyFallback");
+    try { await navigator.clipboard.writeText(txt); fb.hidden = true; toast("Copy ho gaya – WhatsApp mein paste karo"); }
+    catch (e) { fb.hidden = false; fb.value = txt; fb.focus(); fb.select(); toast("Text select hai – Copy dabao"); }
+  }
+  $("#copyWithRates").onclick = () => {
+    const cat = catalog();
+    const lines = checkRows.map((r, i) => {
+      const c = r.key && cat.find((x) => x.key === r.key); const last = c?.hist.at(-1);
+      return `${i + 1}. ${r.name}${r.qty ? " – " + r.qty : ""}${last ? ` (pichhla rate ${money(last.rate)}${last.unit ? "/" + last.unit : ""}, ${fmtDate(last.date)})` : ""}`;
+    });
+    copyText(lines.join("\n"));
+  };
+  $("#copyPlain").onclick = () => copyText("Namaste ji, in items ke rate bhej dijiye:\n" + checkRows.map((r, i) => `${i + 1}. ${r.name}${r.qty ? " – " + r.qty : ""}`).join("\n"));
+
+  // ---------------- Items ----------------
+  let openKey = null;
+  function renderItems() {
+    const q = keyOf($("#itemSearch").value);
+    const cat = catalog().filter((c) => !q || q.split(" ").every((t) => c.key.includes(t) || c.name.toLowerCase().includes(t)));
+    $("#itemCount").textContent = `${catalog().length} items`;
+    if (!S.quotes.length) { $("#itemBody").innerHTML = `<tr><td colspan="5"><div class="empty">Abhi koi item nahi. Pehli rate list save karte hi saara saamaan yahan aa jayega.</div></td></tr>`; return; }
+    $("#itemBody").innerHTML = cat.map((c) => {
+      const last = c.hist.at(-1), first = c.hist[0], prev = c.hist.at(-2);
+      const low = c.hist.reduce((a, b) => (b.rate < a.rate ? b : a));
+      return `<tr class="click" data-key="${esc(c.key)}"><td><b>${esc(c.name)}</b></td>
+        <td><div class="prev"><b>${money(last.rate)}</b>${last.unit ? "/" + esc(last.unit) : ""}<br>${esc(last.supplier)} · ${fmtDate(last.date)}</div></td>
+        <td>${prev ? chgBadge(last.rate, prev.rate) + `<div class="prev">pehle ${money(prev.rate)}</div>` : '<span class="muted small">–</span>'}${c.hist.length > 2 && first !== prev ? `<div class="prev">shuru se ${chgBadge(last.rate, first.rate)}</div>` : ""}</td>
+        <td><div class="prev"><b>${money(low.rate)}</b><br>${esc(low.supplier)}</div></td>
+        <td class="r num">${c.hist.length}</td></tr>`;
+    }).join("") || `<tr><td colspan="5" class="muted">"${esc($("#itemSearch").value)}" naam ka koi item nahi mila.</td></tr>`;
+    renderItemDetail();
+  }
+  function spark(hist) {
+    if (hist.length < 2) return "";
+    const W = 600, H = 150, L = 48, R = 12, T = 12, B = 26;
+    const rates = hist.map((h) => h.rate), mn = Math.min(...rates), mx = Math.max(...rates);
+    const lo = mn === mx ? mn * 0.9 : mn - (mx - mn) * 0.15, hi = mn === mx ? mx * 1.1 : mx + (mx - mn) * 0.15;
+    const x = (i) => L + (i / (hist.length - 1)) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    let g = [mn, mx].map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${money(v)}</text>`).join("");
+    g += `<polyline class="ln" points="${hist.map((h, i) => x(i) + "," + y(h.rate)).join(" ")}"/>`;
+    g += hist.map((h, i) => `<circle class="pt" cx="${x(i)}" cy="${y(h.rate)}" r="${i === hist.length - 1 ? 5 : 3.5}"><title>${fmtDate(h.date)} · ${h.supplier}: ${money(h.rate)}</title></circle>`).join("");
+    g += `<text x="${x(0)}" y="${H - 6}" text-anchor="start">${fmtDate(hist[0].date)}</text><text x="${x(hist.length - 1)}" y="${H - 6}" text-anchor="end">${fmtDate(hist.at(-1).date)}</text>`;
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Rate ka graph">${g}</svg>`;
+  }
+  function renderItemDetail() {
+    const box = $("#itemDetail");
+    const c = openKey && catalog().find((x) => x.key === openKey);
+    box.hidden = !c; if (!c) return;
+    const bySup = {};
+    c.hist.forEach((h) => (bySup[h.supplier] = h));
+    box.innerHTML = `<header><h2>${esc(c.name)}</h2><button class="linkish small" id="closeItem">Band karo</button></header>
+      ${spark(c.hist)}
+      <div class="summary">${Object.entries(bySup).map(([s, h]) => `<div><b>${money(h.rate)}</b><span>${esc(s)} ka aakhri · ${fmtDate(h.date)}</span></div>`).join("")}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Tareekh</th><th>Supplier</th><th>Naam (list mein)</th><th class="r">Rate</th><th>Unit</th><th class="r">Badlav</th></tr></thead><tbody>
+      ${c.hist.slice().reverse().map((h, i, arr) => `<tr><td class="num">${fmtDate(h.date)}</td><td>${esc(h.supplier)}</td><td class="small">${esc(h.name)}</td><td class="r num">${money(h.rate)}</td><td>${esc(h.unit)}</td><td class="r">${arr[i + 1] ? chgBadge(h.rate, arr[i + 1].rate) : ""}</td></tr>`).join("")}
+      </tbody></table></div>`;
+    $("#closeItem").onclick = () => { openKey = null; renderItemDetail(); };
+  }
+  $("#itemSearch").addEventListener("input", renderItems);
+  $("#itemBody").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-key]"); if (!tr) return; openKey = tr.dataset.key; renderItemDetail(); $("#itemDetail").scrollIntoView({ behavior: "smooth", block: "start" }); });
+
+  // ---------------- Quote lists ----------------
+  let openQuoteId = null, confirmDel = false;
+  function renderLists() {
+    const f = $("#lSupplier").value;
+    const sup = Object.fromEntries(S.suppliers.map((s) => [s.id, s.name]));
+    const qs = S.quotes.filter((q) => !f || q.supplierId === f).sort((a, b) => (a.date === b.date ? (b.created || 0) - (a.created || 0) : a.date < b.date ? 1 : -1));
+    $("#quoteList").innerHTML = qs.length ? qs.map((q) => {
+      let up = 0, down = 0;
+      q.items.forEach((it) => { const pv = previousFor(it.key, { supplierId: q.supplierId, date: q.date, excludeQuote: q.id }); if (pv) { if (it.rate > pv.last.rate * 1.005) up++; else if (it.rate < pv.last.rate * 0.995) down++; } });
+      return `<button class="qcard" data-q="${esc(q.id)}"><b>${esc(sup[q.supplierId] || "?")}</b><span class="date">${fmtDate(q.date)}</span>
+        <span class="small muted">${q.items.length} items${q.note ? " · " + esc(q.note) : ""}</span>
+        <span class="small">${up ? `<span class="chg up">▲ ${up}</span> ` : ""}${down ? `<span class="chg down">▼ ${down}</span>` : ""}</span></button>`;
+    }).join("") : `<div class="empty"><b>Abhi koi rate list save nahi hai.</b>
+      <ol class="steps"><li>Supplier ka rate wala message copy karo</li><li>"Nayi rate list" mein paste karke "Items nikalo" dabao</li><li>Check karke save karo – agli baar purane rate apne aap dikhenge</li></ol>
+      <a class="btn" href="#nayi">Pehli rate list daalo</a></div>`;
+    renderQuoteDetail();
+  }
+  function openQuote(id) { openQuoteId = id; confirmDel = false; renderQuoteDetail(); }
+  function renderQuoteDetail() {
+    const box = $("#quoteDetail");
+    const q = openQuoteId && S.quotes.find((x) => x.id === openQuoteId);
+    box.hidden = !q; if (!q) return;
+    const sname = S.suppliers.find((s) => s.id === q.supplierId)?.name || "?";
+    let up = 0, down = 0, fresh = 0, total = 0;
+    const rows = q.items.map((it) => {
+      const pv = previousFor(it.key, { supplierId: q.supplierId, date: q.date, excludeQuote: q.id });
+      if (!pv) fresh++; else if (it.rate > pv.last.rate * 1.005) up++; else if (it.rate < pv.last.rate * 0.995) down++;
+      if (it.qty) total += it.qty * it.rate;
+      return `<tr><td>${esc(it.name)}</td><td>${esc(it.unit)}</td><td class="r num">${it.qty ?? ""}</td><td class="r num"><b>${money(it.rate)}</b></td>
+        <td>${pv ? `<div class="prev"><b>${money(pv.last.rate)}</b> · ${esc(pv.last.supplier)}<br>${fmtDate(pv.last.date)}</div>` : '<span class="muted small">pehli baar</span>'}</td>
+        <td class="r">${pv ? chgBadge(it.rate, pv.last.rate) : '<span class="chg new">naya</span>'}</td></tr>`;
+    }).join("");
+    box.innerHTML = `<header><div><h2>${esc(sname)}</h2><p class="small muted num">${fmtDate(q.date)}${q.note ? " · " + esc(q.note) : ""}</p></div>
+      <div class="row">${confirmDel ? `<span class="small">Pakka delete karna hai?</span><button class="btn danger sm" id="delYes">Haan, delete</button><button class="btn plain sm" id="delNo">Nahi</button>`
+        : `<button class="btn ghost sm" id="editQ">Edit</button><button class="btn plain sm" id="delQ">Delete</button><button class="linkish small" id="closeQ">Band karo</button>`}</div></header>
+      <div class="summary"><div><b>${q.items.length}</b><span>items</span></div><div><b>${up}</b><span>mehenge ▲</span></div><div><b>${down}</b><span>saste ▼</span></div><div><b>${fresh}</b><span>naye</span></div>${total ? `<div><b>${money(total)}</b><span>total (qty × rate)</span></div>` : ""}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Unit</th><th class="r">Qty</th><th class="r">Rate</th><th>Pichhla rate</th><th class="r">Badlav</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    on("closeQ", () => { openQuoteId = null; renderQuoteDetail(); });
+    on("delQ", () => { confirmDel = true; renderQuoteDetail(); });
+    on("delNo", () => { confirmDel = false; renderQuoteDetail(); });
+    on("delYes", async () => { try { await store.delQuote(q.id); openQuoteId = null; toast("Rate list delete ho gayi"); renderAll(); } catch (e) { toast("Delete nahi hua"); } });
+    on("editQ", () => {
+      editingId = q.id;
+      draft = q.items.map((it) => ({ name: it.name, unit: it.unit, qty: it.qty, rate: it.rate, match: null }));
+      $("#qSupplier").value = q.supplierId; $("#qDate").value = q.date; $("#qNote").value = q.note || "";
+      $("#qFormTitle").textContent = "Rate list edit karo"; $("#cancelEdit").hidden = false; $("#newSupWrap").hidden = true;
+      location.hash = "nayi"; renderReview();
+    });
+  }
+  $("#quoteList").addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (!b) return; openQuote(b.dataset.q); $("#quoteDetail").scrollIntoView({ behavior: "smooth", block: "start" }); });
+  $("#lSupplier").onchange = renderLists;
+
+  $("#exportCsv").onclick = async () => {
+    const rows = entries();
+    if (!rows.length) return toast("Abhi export karne ko kuch nahi hai");
+    const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = "﻿Date,Supplier,Item,Unit,Qty,Rate\n" + rows.map((r) => [r.date, r.supplier, r.name, r.unit, r.qty ?? "", r.rate].map(q).join(",")).join("\n");
+    const filename = `rate-diary-${today()}.csv`;
+    if (downloads) {
+      try { await downloads.save({ filename, data: csv }); toast("File save ho gayi"); } catch (e) { if (e?.code !== "declined") toast("Download nahi hua"); }
+      return;
+    }
+    try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = filename; a.click(); } catch (e) { toast("Download nahi hua"); }
+  };
+
+  // ---------------- Routing + render ----------------
+  const VIEWS = ["nayi", "check", "saamaan", "lists"];
+  function route() {
+    const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "nayi";
+    VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v));
+    document.querySelectorAll("nav.tabs a").forEach((a) => a.classList.toggle("on", a.dataset.v === v));
+  }
+  window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+  function renderAll() {
+    if (!S.ready) return;
+    renderSupplierSelects(); renderReview(); renderItems(); renderLists(); if (checkRows.length) renderCheck();
+  }
+  init();
+})();
+</script>
+
+</body></html>
