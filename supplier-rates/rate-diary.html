@@ -254,6 +254,7 @@ td.date { white-space: nowrap; }
     const sorted = rows.slice().sort(order);
     const csv = "﻿Date,Item,Qty,Rate (1 pc),Remark\n" + sorted.map((r) => { const m = remark(r.rate, previousOf(r.key, r.date, r.created || 0)); return [showDate(r.date), r.item, r.qty ?? "", r.rate, m.text + (m.sub ? " (" + m.sub + ")" : "")].map(c).join(","); }).join("\n");
     const filename = `rate-diary-${today()}.csv`;
+    if (window.AndroidBridge) { window.AndroidBridge.shareText(filename, csv); return; }   // Android app: share sheet
     if (downloads) { try { await downloads.save({ filename, data: csv }); } catch (err) { if (err?.code !== "declined") toast("Download nahi hua"); } return; }
     try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = filename; a.click(); } catch (err) { toast("Download nahi hua"); }
   };
