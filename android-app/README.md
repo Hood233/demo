@@ -18,4 +18,4 @@ Android SDK ki zaroorat nahi. Java 17+ aur Python 3 chahiye, aur `TOOLS` folder 
 TOOLS=/path/to/tools python3 build.py
 ```
 App ka page `../supplier-rates/index.html` se liya jata hai. Update ke liye `build.py` mein `VCODE` badhao.
-`release.p12` wahi signing key hai jisse update purani app ke upar install hota hai – ise mat badlo.
+`release.p12` (signing key) git mein nahi rakhi gayi. Naye build par nayi key banegi, aur naya APK purani app ke upar install nahi hoga: pehle data ka CSV backup lo, purani app uninstall karo, phir naya APK install karo.
