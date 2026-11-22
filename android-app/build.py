@@ -13,7 +13,10 @@ ap.add_argument("--out", default="RateDiary.apk")
 ap.add_argument("--key", default="release.p12")
 ap.add_argument("--vcode", type=int, default=2)
 ap.add_argument("--vname", default="1.1")
-ap.add_argument("--src", default="src/com/ratediary/app/MainActivity.java")
+ap.add_argument("--src", nargs="+", default=["src/com/ratediary/app/MainActivity.java"])
+ap.add_argument("--no-backup", action="store_true", help="android:allowBackup=false (data never goes to Google cloud backup)")
+ap.add_argument("--perm", action="append", default=[], help="uses-permission name (repeatable)")
+ap.add_argument("--provider", action="append", default=[], help="CLASS|AUTHORITY of a non-exported provider with grantUriPermissions")
 ap.add_argument("--activity", default="com.ratediary.app.MainActivity")
 ap.add_argument("--stubs", default="stubs")
 ARGS = ap.parse_args()
@@ -41,7 +44,8 @@ def string_pool(strings):
 # ---------- binary XML ----------
 ATTR_IDS = {"versionCode": 0x0101021b, "versionName": 0x0101021c, "minSdkVersion": 0x0101020c, "targetSdkVersion": 0x01010270,
             "label": 0x01010001, "icon": 0x01010002, "allowBackup": 0x01010280, "hardwareAccelerated": 0x010102d3,
-            "name": 0x01010003, "exported": 0x01010010, "configChanges": 0x0101001f, "windowSoftInputMode": 0x0101022b}
+            "name": 0x01010003, "exported": 0x01010010, "configChanges": 0x0101001f, "windowSoftInputMode": 0x0101022b,
+            "authorities": 0x01010018, "grantUriPermissions": 0x0101001b}
 T_REF, T_STR, T_DEC, T_HEX, T_BOOL = 0x01, 0x03, 0x10, 0x11, 0x12
 
 def axml(tree):
@@ -85,7 +89,8 @@ def axml(tree):
 A = True
 manifest = ("manifest", [(None, "package", T_STR, PKG), (A, "versionCode", T_DEC, VCODE), (A, "versionName", T_STR, VNAME)], [
     ("uses-sdk", [(A, "minSdkVersion", T_DEC, MIN_SDK), (A, "targetSdkVersion", T_DEC, TARGET_SDK)], []),
-    ("application", [(A, "label", T_STR, LABEL), (A, "icon", T_REF, 0x7f010000), (A, "allowBackup", T_BOOL, True), (A, "hardwareAccelerated", T_BOOL, True)], [
+    *[("uses-permission", [(A, "name", T_STR, p)], []) for p in ARGS.perm],
+    ("application", [(A, "label", T_STR, LABEL), (A, "icon", T_REF, 0x7f010000), (A, "allowBackup", T_BOOL, not ARGS.no_backup), (A, "hardwareAccelerated", T_BOOL, True)], [
         ("activity", [(A, "name", T_STR, ARGS.activity), (A, "exported", T_BOOL, True),
                       (A, "configChanges", T_HEX, 0x04a0), (A, "windowSoftInputMode", T_HEX, 0x10)], [
             ("intent-filter", [], [
@@ -93,6 +98,8 @@ manifest = ("manifest", [(None, "package", T_STR, PKG), (A, "versionCode", T_DEC
                 ("category", [(A, "name", T_STR, "android.intent.category.LAUNCHER")], []),
             ]),
         ]),
+        *[("provider", [(A, "name", T_STR, pv.split("|")[0]), (A, "authorities", T_STR, pv.split("|")[1]),
+                        (A, "exported", T_BOOL, False), (A, "grantUriPermissions", T_BOOL, True)], []) for pv in ARGS.provider],
     ]),
 ])
 
@@ -122,7 +129,7 @@ def main():
     stub_src = [os.path.join(d, f) for d, _, fs in os.walk(ARGS.stubs) for f in fs if f.endswith(".java")]
     run(["javac", "--release", "8", "-nowarn", "-cp", TOOLS + "/android.jar", "-d", OUT + "/stubs"] + stub_src)
     # stubs first, so API 17+/21+ classes we declare win over the old API 16 jar at compile time (never packed)
-    run(["javac", "--release", "8", "-nowarn", "-cp", OUT + "/stubs:" + TOOLS + "/android.jar", "-d", OUT + "/classes", ARGS.src])
+    run(["javac", "--release", "8", "-nowarn", "-cp", OUT + "/stubs:" + TOOLS + "/android.jar", "-d", OUT + "/classes"] + ARGS.src)
     run(["java", "-cp", TOOLS + "/dx.jar", "com.android.dx.command.Main", "--dex", "--min-sdk-version=24", "--output=" + OUT + "/classes.dex", OUT + "/classes"])
     files = [("AndroidManifest.xml", axml(manifest), zipfile.ZIP_DEFLATED),
              ("resources.arsc", arsc(), zipfile.ZIP_STORED),
