@@ -13,6 +13,9 @@ ap.add_argument("--out", default="RateDiary.apk")
 ap.add_argument("--key", default="release.p12")
 ap.add_argument("--vcode", type=int, default=2)
 ap.add_argument("--vname", default="1.1")
+ap.add_argument("--src", default="src/com/ratediary/app/MainActivity.java")
+ap.add_argument("--activity", default="com.ratediary.app.MainActivity")
+ap.add_argument("--stubs", default="stubs")
 ARGS = ap.parse_args()
 PKG, LABEL, VCODE, VNAME = ARGS.pkg, ARGS.label, ARGS.vcode, ARGS.vname
 MIN_SDK, TARGET_SDK = 24, 34
@@ -83,7 +86,7 @@ A = True
 manifest = ("manifest", [(None, "package", T_STR, PKG), (A, "versionCode", T_DEC, VCODE), (A, "versionName", T_STR, VNAME)], [
     ("uses-sdk", [(A, "minSdkVersion", T_DEC, MIN_SDK), (A, "targetSdkVersion", T_DEC, TARGET_SDK)], []),
     ("application", [(A, "label", T_STR, LABEL), (A, "icon", T_REF, 0x7f010000), (A, "allowBackup", T_BOOL, True), (A, "hardwareAccelerated", T_BOOL, True)], [
-        ("activity", [(A, "name", T_STR, "com.ratediary.app.MainActivity"), (A, "exported", T_BOOL, True),
+        ("activity", [(A, "name", T_STR, ARGS.activity), (A, "exported", T_BOOL, True),
                       (A, "configChanges", T_HEX, 0x04a0), (A, "windowSoftInputMode", T_HEX, 0x10)], [
             ("intent-filter", [], [
                 ("action", [(A, "name", T_STR, "android.intent.action.MAIN")], []),
@@ -116,8 +119,10 @@ def run(cmd):
 def main():
     shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT + "/classes")
     os.makedirs(OUT + "/stubs")
-    run(["javac", "--release", "8", "-nowarn", "-d", OUT + "/stubs", "stubs/android/webkit/JavascriptInterface.java"])
-    run(["javac", "--release", "8", "-nowarn", "-cp", TOOLS + "/android.jar:" + OUT + "/stubs", "-d", OUT + "/classes", "src/com/ratediary/app/MainActivity.java"])
+    stub_src = [os.path.join(d, f) for d, _, fs in os.walk(ARGS.stubs) for f in fs if f.endswith(".java")]
+    run(["javac", "--release", "8", "-nowarn", "-cp", TOOLS + "/android.jar", "-d", OUT + "/stubs"] + stub_src)
+    # stubs first, so API 17+/21+ classes we declare win over the old API 16 jar at compile time (never packed)
+    run(["javac", "--release", "8", "-nowarn", "-cp", OUT + "/stubs:" + TOOLS + "/android.jar", "-d", OUT + "/classes", ARGS.src])
     run(["java", "-cp", TOOLS + "/dx.jar", "com.android.dx.command.Main", "--dex", "--min-sdk-version=24", "--output=" + OUT + "/classes.dex", OUT + "/classes"])
     files = [("AndroidManifest.xml", axml(manifest), zipfile.ZIP_DEFLATED),
              ("resources.arsc", arsc(), zipfile.ZIP_STORED),
