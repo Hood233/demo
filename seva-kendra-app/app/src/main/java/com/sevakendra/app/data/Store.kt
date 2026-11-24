@@ -29,11 +29,12 @@ class Store(context: Context) {
         this.name = name.trim()
         this.mobile = mobile.trim()
         this.address = address.trim()
-        prefs.edit()
-            .putString("name", this.name)
-            .putString("mobile", this.mobile)
-            .putString("address", this.address)
-            .apply()
+        prefs.edit().apply {
+            putString("name", this@Store.name)
+            putString("mobile", this@Store.mobile)
+            putString("address", this@Store.address)
+            apply()
+        }
     }
 
     fun addApplication(app: Application) {
@@ -43,7 +44,7 @@ class Store(context: Context) {
 
     fun nextApplicationId(): String {
         val n = prefs.getInt("app_counter", 1000) + 1
-        prefs.edit().putInt("app_counter", n).apply()
+        prefs.edit().apply { putInt("app_counter", n); apply() }
         return "SK-$n"
     }
 
@@ -69,7 +70,7 @@ class Store(context: Context) {
                     .put("status", it.status)
             )
         }
-        prefs.edit().putString("apps", arr.toString()).apply()
+        prefs.edit().apply { putString("apps", arr.toString()); apply() }
     }
 
     private fun loadApps(): List<Application> {

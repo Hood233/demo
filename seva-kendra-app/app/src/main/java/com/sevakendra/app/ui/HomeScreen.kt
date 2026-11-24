@@ -96,7 +96,7 @@ fun HomeScreen(store: Store, onService: (String) -> Unit, onShop: () -> Unit) {
                         modifier = Modifier.width(86.dp).clickable(onClick = onShop)) {
                         Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(p.emoji, fontSize = 28.sp)
-                            Text(p.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, color = Ink)
+                            Text(p.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, lineHeight = 13.sp, color = Ink, textAlign = TextAlign.Center)
                             Text("₹${p.price}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Blue)
                         }
                     }

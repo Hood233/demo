@@ -77,7 +77,7 @@ fun CartScreen(store: Store, onBack: () -> Unit, onDone: () -> Unit) {
                     Text("Kaise lenge?", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Choice("🏪 Dukaan se uthaunga", !delivery, Modifier.weight(1f)) { delivery = false }
+                        Choice("🏪 Dukaan se lunga", !delivery, Modifier.weight(1f)) { delivery = false }
                         Choice("🛵 Ghar bhejo", delivery, Modifier.weight(1f)) { delivery = true }
                     }
                     OutlinedTextField(name, { name = it }, label = { Text("Naam") }, singleLine = true,

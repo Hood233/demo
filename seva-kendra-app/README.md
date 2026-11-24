@@ -46,6 +46,13 @@ Command line se build karna ho (Android SDK install hona chahiye):
 ./gradlew assembleDebug
 ```
 
+## Screens check karna (bina phone ke)
+
+```bash
+./gradlew recordPaparazziDebug   # app/src/test/snapshots/images/ mein screenshots banenge
+./gradlew verifyPaparazziDebug   # design badla to test fail hoga
+```
+
 ## Requirements
 
 - Android 8.0 (API 26) ya usse naya
