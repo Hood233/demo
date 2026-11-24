@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.SevaKendra" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+    </style>
+    <color name="bg">#F6F8FC</color>
+    <color name="blue">#1565C0</color>
+</resources>
